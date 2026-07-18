@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MindMirror — See your words reflected</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<section class="onboarding" id="onboarding">
+  <a href="#app" class="onboarding__skip">Skip</a>
+
+  <div class="onboarding__track" id="onboardingTrack">
+
+    <article class="slide slide--cover">
+      <div class="cover-media">
+        <img src="assets/mindmirror-cover.png" alt="MindMirror — a person looking into a mirror, seeing a gentler reflection of themselves. Reflect. Heal. Grow.">
+      </div>
+      <div class="slide__content">
+        <p class="slide__eyebrow">MindMirror</p>
+        <h1 class="slide__title">Your words reflect your mind — let MindMirror help you understand the reflection.</h1>
+        <p class="slide__sub">A quiet space to write, and a mirror that reflects what your words are really saying.</p>
+        <a href="#app" class="slide__cta">Start writing</a>
+      </div>
+    </article>
+
+    <article class="slide slide--ink">
+      <div class="slide__content">
+        <p class="slide__eyebrow">01 — Write</p>
+        <h2 class="slide__title">Write it out, unfiltered.</h2>
+        <p class="slide__sub">No structure, no rules — just you and the page.</p>
+      </div>
+      <div class="phone-mock phone-mock--paper">
+        <div class="phone-mock__notch"></div>
+        <p class="phone-mock__label">You write</p>
+        <p class="phone-mock__placeholder">Today felt heavier than usual. I keep thinking about...</p>
+        <span class="phone-mock__btn">Analyze reflection</span>
+      </div>
+    </article>
+
+    <article class="slide slide--plum">
+      <div class="slide__content">
+        <p class="slide__eyebrow">02 — Reflection</p>
+        <h2 class="slide__title">See the feeling behind the words.</h2>
+        <p class="slide__sub">MindMirror breaks your writing into named emotions — joy, sadness, anxiety, anger, calm.</p>
+      </div>
+      <div class="phone-mock phone-mock--ink">
+        <div class="phone-mock__notch"></div>
+        <div class="phone-mock__bars">
+          <div class="phone-mock__bar" style="--w:72%; --c: var(--plum)"><span>Anxiety</span></div>
+          <div class="phone-mock__bar" style="--w:48%; --c: var(--slate)"><span>Sadness</span></div>
+          <div class="phone-mock__bar" style="--w:30%; --c: var(--amber)"><span>Joy</span></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="slide slide--amber">
+      <div class="slide__content">
+        <p class="slide__eyebrow">03 — Examples</p>
+        <h2 class="slide__title">Learn from real situations.</h2>
+        <p class="slide__sub">Explore example reflections drawn from everyday moments — exam stress, distant relationships, quiet loneliness.</p>
+      </div>
+      <div class="phone-mock phone-mock--ink">
+        <div class="phone-mock__notch"></div>
+        <div class="phone-mock__chat">
+          <div class="phone-mock__bubble phone-mock__bubble--user">Can't sleep, exam's tomorrow.</div>
+          <div class="phone-mock__bubble phone-mock__bubble--reflect">A calm breath first — then whatever you know is enough.</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="slide slide--slate">
+      <div class="slide__content">
+        <p class="slide__eyebrow">Privacy</p>
+        <h2 class="slide__title">Nothing is stored. Nothing is judged.</h2>
+        <p class="slide__sub">Your writing lives only on this page, for this moment.</p>
+      </div>
+      <div class="phone-mock phone-mock--paper">
+        <div class="phone-mock__notch"></div>
+        <div class="phone-mock__lock">🔒</div>
+        <p class="phone-mock__label">Your words stay yours</p>
+      </div>
+    </article>
+
+    <article class="slide slide--ink slide--cta">
+      <div class="slide__content">
+        <p class="slide__eyebrow">MindMirror</p>
+        <h2 class="slide__title">Ready to see your reflection?</h2>
+        <p class="slide__sub">Write a few honest lines. MindMirror will do the rest.</p>
+        <a href="#app" class="slide__cta">Start writing</a>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="onboarding__controls">
+    <button class="onboarding__arrow onboarding__arrow--prev" id="prevSlide" aria-label="Previous slide">‹</button>
+    <div class="onboarding__dots" id="onboardingDots"></div>
+    <button class="onboarding__arrow onboarding__arrow--next" id="nextSlide" aria-label="Next slide">›</button>
+  </div>
+</section>
+
+<header class="nav">
+  <div class="nav__mark" aria-hidden="true">
+    <span class="mark mark--a"></span><span class="mark mark--b"></span>
+  </div>
+  <span class="nav__word">MindMirror</span>
+  <div class="nav__links" id="navLinks">
+    <a class="nav__link" href="#cases">Examples</a>
+    <a class="nav__link nav__link--secondary" href="#about">About</a>
+    <span class="nav__greeting" id="navGreeting" hidden></span>
+    <a class="nav__link nav__link--cta" href="login.html" id="navAuthLink">Log in</a>
+  </div>
+</header>
+
+<main>
+
+  <section class="app" id="app">
+    <div class="mirror-frame">
+
+      <div class="panel panel--paper">
+        <div class="panel__head">
+          <span class="panel__label">01 — You write</span>
+          <span class="panel__count"><span id="wordCount">0</span> words</span>
+        </div>
+        <textarea
+          id="journalInput"
+          class="journal"
+          placeholder="How are you feeling today? What's weighing on you, or what's keeping you going — write whatever comes to mind. No one else will read this, just you and your reflection."
+          spellcheck="false"
+        ></textarea>
+        <div class="panel__foot">
+          <button id="analyzeBtn" class="btn-analyze" type="button">
+            <span class="btn-analyze__text">Show my reflection</span>
+            <span class="btn-analyze__ripple" aria-hidden="true"></span>
+          </button>
+          <button id="clearBtn" class="btn-clear" type="button">Clear</button>
+        </div>
+      </div>
+
+      <div class="seam" aria-hidden="true"></div>
+
+      <div class="panel panel--reflection" id="reflection">
+
+        <div class="reflection__empty" id="emptyState">
+          <div class="ripple-mark" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <p class="panel__label">02 — Reflection</p>
+          <p class="reflection__empty-text">Once you submit your writing, the tone, feeling, and shape of your words will show up here.</p>
+        </div>
+
+        <div class="reflection__result" id="resultState" hidden>
+          <p class="panel__label">02 — Reflection</p>
+
+          <div class="mood-headline">
+            <span class="mood-headline__label">Overall tone</span>
+            <span class="mood-headline__word" id="moodWord">—</span>
+            <span class="mood-headline__note" id="moodNote"></span>
+          </div>
+
+          <ul class="emotion-bars" id="emotionBars">
+            <!-- filled by script.js -->
+          </ul>
+
+          <p class="reflection__message" id="reflectionMessage"></p>
+
+          <p class="reflection__disclaimer">
+            This is an early, automated estimate — not a clinical assessment. If a low mood sticks around, it's worth telling someone you trust, or a mental health professional.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <section class="history" id="historySection" hidden>
+    <div class="history__head">
+      <p class="panel__label panel__label--light">Saved for you</p>
+      <h2 class="history__title">Your journal history</h2>
+      <p class="history__sub">Kept for this session only, for now — real accounts need a backend + database behind them.</p>
+    </div>
+    <ul class="history__list" id="historyList">
+      <li class="history__empty" id="historyEmpty">Nothing saved yet. Analyze an entry above to add it here.</li>
+    </ul>
+  </section>
+
+  <section class="cases" id="cases">
+    <div class="cases__head">
+      <p class="panel__label panel__label--light">03 — Real situations</p>
+      <h2 class="cases__title">How different situations<br>get reflected</h2>
+      <p class="cases__sub">Click any situation below — see what someone wrote, and what reflection MindMirror gave back.</p>
+    </div>
+    <div class="cases__list" id="casesList">
+      <!-- generated from cases-data.js by script.js -->
+    </div>
+  </section>
+
+  <section class="about" id="about">
+    <h2 class="about__title">A mirror, not a verdict</h2>
+    <div class="about__grid">
+      <div class="about__item">
+        <span class="about__num">01</span>
+        <p>Nothing you write is saved anywhere — the analysis happens right here, on this page.</p>
+      </div>
+      <div class="about__item">
+        <span class="about__num">02</span>
+        <p>The NLP model looks at words, tone, and structure to estimate feeling — it isn't a precise diagnosis.</p>
+      </div>
+      <div class="about__item">
+        <span class="about__num">03</span>
+        <p>If a result feels concerning, please talk to a mental health professional.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span>MindMirror — a reflection, not a diagnosis.</span>
+</footer>
+
+<script src="cases-data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
