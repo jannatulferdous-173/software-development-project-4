@@ -26,9 +26,13 @@
   --body:    "Work Sans", "Segoe UI", sans-serif;
   --mono:    "Space Mono", monospace;
 
-  --plum-bg:  #22182A;
-  --amber-bg: #2B2013;
-  --slate-bg: #16232D;
+  /* pastel tints for the onboarding slides — all in the same
+     lavender family as --bg, so scrolling between them (and
+     into the rest of the site) never jumps to a dark screen */
+  --pastel-write:    #EAD9DE;
+  --pastel-reflect:  #E3C9DC;
+  --pastel-examples: #F0DCC9;
+  --pastel-privacy:  #CFD6E4;
 
   --ease: cubic-bezier(.22,.61,.36,1);
 }
@@ -67,9 +71,12 @@ button{ font-family: inherit; }
 }
 .onboarding__skip{
   position:absolute; top: 1.4rem; right: 1.4rem; z-index: 5;
-  color: var(--paper); text-decoration:none; opacity:.65;
+  color: var(--ink); text-decoration:none; opacity:.85;
   font-size: .85rem;
-  padding: .4rem .8rem;
+  padding: .4rem .9rem;
+  background: rgba(255,255,255,.5);
+  border-radius: 100px;
+  backdrop-filter: blur(4px);
 }
 .onboarding__skip:hover{ opacity:1; }
 
@@ -98,10 +105,11 @@ button{ font-family: inherit; }
   text-align:center;
 }
 .slide--paper{ background: var(--paper); color: var(--ink); }
-.slide--ink{ background: var(--ink); color: var(--paper); }
-.slide--plum{ background: var(--plum-bg); color: var(--paper); }
-.slide--amber{ background: var(--amber-bg); color: var(--paper); }
-.slide--slate{ background: var(--slate-bg); color: var(--paper); }
+.slide--ink{ background: var(--pastel-write); color: var(--ink); }
+.slide--plum{ background: var(--pastel-reflect); color: var(--ink); }
+.slide--amber{ background: var(--pastel-examples); color: var(--ink); }
+.slide--slate{ background: var(--pastel-privacy); color: var(--ink); }
+.slide--ink.slide--cta{ background: var(--bg); }
 
 .slide__content{ max-width: 480px; }
 .slide__eyebrow{
@@ -174,6 +182,42 @@ button{ font-family: inherit; }
   }
   .cover-media{ height: 100%; }
 }
+
+/* --- slide 2 (intent): "What brings you here?" — a short,
+   single-select question before the person lands in the app.
+   Kept in the same lavender family as everything else. --- */
+.slide--intent{
+  background: var(--bg);
+  color: var(--ink);
+  overflow-y: auto;
+  padding-top: clamp(2rem,6vh,3rem);
+  padding-bottom: clamp(2rem,6vh,3rem);
+}
+.slide__content--wide{ max-width: 440px; width: 100%; }
+.intent-options{
+  display:flex; flex-direction:column; gap: .8rem;
+  margin: 1.6rem 0 2rem;
+  width: 100%;
+}
+.intent-option{
+  font-family: var(--body);
+  font-size: .98rem;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 1.1rem 1.3rem;
+  cursor: pointer;
+  box-shadow: 0 12px 25px -18px rgba(15,30,43,.35);
+  transition: border-color .2s var(--ease), transform .2s var(--ease), background .2s var(--ease);
+}
+.intent-option:hover{ transform: translateY(-1px); }
+.intent-option.is-selected{
+  border-color: var(--amber);
+  background: var(--paper-dim);
+}
+.intent-continue{ display:inline-block; }
 
 /* --- phone mockup, shared by onboarding slides --- */
 .phone-mock{
@@ -253,7 +297,7 @@ button{ font-family: inherit; }
 .onboarding__dots{ display:flex; gap:.5rem; }
 .onboarding__dots span{
   width:6px; height:6px; border-radius:50%;
-  background: rgba(247,241,228,.3);
+  background: rgba(15,30,43,.25);
   transition: background .25s var(--ease), transform .25s var(--ease);
 }
 .onboarding__dots span.is-active{
@@ -838,3 +882,4 @@ button{ font-family: inherit; }
   .panel{ min-height: unset; }
   .journal{ min-height: 220px; }
 }
+
