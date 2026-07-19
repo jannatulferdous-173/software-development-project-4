@@ -25,6 +25,7 @@
         <h1 class="slide__title">Your words reflect your mind — let MindMirror help you understand the reflection.</h1>
         <p class="slide__sub">A quiet space to write, and a mirror that reflects what your words are really saying.</p>
         <a href="#intentSlide" class="slide__cta">Start writing</a>
+        <a href="login.html" class="slide__account-link">I already have an account</a>
       </div>
     </article>
 
@@ -144,6 +145,35 @@
           <span class="panel__label">01 — You write</span>
           <span class="panel__count"><span id="wordCount">0</span> words</span>
         </div>
+
+        <p class="mood-picker__label">Quick mood check (optional)</p>
+        <div class="mood-picker" id="moodPicker">
+          <button type="button" class="mood-option" style="background:#F4D9D9" data-mood="Happy">
+            <span class="mood-option__icon">😊</span><span class="mood-option__label">Happy</span>
+          </button>
+          <button type="button" class="mood-option" style="background:#DCD7DE" data-mood="Sad">
+            <span class="mood-option__icon">😢</span><span class="mood-option__label">Sad</span>
+          </button>
+          <button type="button" class="mood-option" style="background:#EFE7C0" data-mood="Anxious">
+            <span class="mood-option__icon">😰</span><span class="mood-option__label">Anxious</span>
+          </button>
+          <button type="button" class="mood-option" style="background:#D9EAE0" data-mood="Calm">
+            <span class="mood-option__icon">😌</span><span class="mood-option__label">Calm</span>
+          </button>
+          <button type="button" class="mood-option" style="background:#EFE6D8" data-mood="Angry">
+            <span class="mood-option__icon">😠</span><span class="mood-option__label">Angry</span>
+          </button>
+          <button type="button" class="mood-option" style="background:#D7DEE6" data-mood="Tired">
+            <span class="mood-option__icon">😴</span><span class="mood-option__label">Tired</span>
+          </button>
+          <button type="button" class="mood-option" style="background:#D7E4D4" data-mood="Grateful">
+            <span class="mood-option__icon">🙏</span><span class="mood-option__label">Grateful</span>
+          </button>
+          <button type="button" class="mood-option" style="background:#DCE3EE" data-mood="Overwhelmed">
+            <span class="mood-option__icon">🤯</span><span class="mood-option__label">Overwhelmed</span>
+          </button>
+        </div>
+
         <textarea
           id="journalInput"
           class="journal"
@@ -200,7 +230,6 @@
     <div class="history__head">
       <p class="panel__label panel__label--light">Saved for you</p>
       <h2 class="history__title">Your journal history</h2>
-      <p class="history__sub">Kept for this session only, for now — real accounts need a backend + database behind them.</p>
     </div>
     <ul class="history__list" id="historyList">
       <li class="history__empty" id="historyEmpty">Nothing saved yet. Analyze an entry above to add it here.</li>
@@ -246,4 +275,3 @@
 <script src="script.js"></script>
 </body>
 </html>
-
