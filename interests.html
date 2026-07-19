@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interests — MindMirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+
+<main class="auth">
+  <div class="auth-card age-card interests-card">
+    <button type="button" class="age-back" id="interestsBack" aria-label="Go back">‹</button>
+
+    <div class="q-progress" aria-hidden="true">
+      <span class="is-active"></span><span class="is-active"></span><span class="is-active"></span><span class="is-active"></span>
+    </div>
+
+    <h1 class="age-card__title">Which of the following are you interested in practicing?</h1>
+    <p class="interests-sub">Choose all that apply</p>
+
+    <div class="interests-grid" id="interestsGrid">
+      <button type="button" class="interest-card" style="background:#D7DEE6">
+        <span class="interest-card__icon">☁️</span>
+        <span class="interest-card__label">Breathing exercises</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#EFE6D8">
+        <span class="interest-card__icon">✏️</span>
+        <span class="interest-card__label">Journaling</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#D9EAE0">
+        <span class="interest-card__icon">💧</span>
+        <span class="interest-card__label">Meditation</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#DCD7DE">
+        <span class="interest-card__icon">🙂</span>
+        <span class="interest-card__label">Mood tracking</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#F4D9D9">
+        <span class="interest-card__icon">❤️</span>
+        <span class="interest-card__label">Self-love</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#EFE7C0">
+        <span class="interest-card__icon">✨</span>
+        <span class="interest-card__label">Gratitude practices</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#D7E4D4">
+        <span class="interest-card__icon">🏃</span>
+        <span class="interest-card__label">Physical activities</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#C9CDD3">
+        <span class="interest-card__icon">🌙</span>
+        <span class="interest-card__label">Better sleep</span>
+      </button>
+      <button type="button" class="interest-card" style="background:#DCE3EE">
+        <span class="interest-card__icon">⚙️</span>
+        <span class="interest-card__label">Productivity</span>
+      </button>
+    </div>
+
+    <a href="index.html" class="slide__cta intent-continue" id="interestsContinue">Next</a>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+</body>
+</html>
