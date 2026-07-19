@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sleep schedule — MindMirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+
+<main class="auth">
+  <div class="auth-card age-card">
+    <button type="button" class="age-back" id="sleepBack" aria-label="Go back">‹</button>
+
+    <div class="q-progress" aria-hidden="true">
+      <span class="is-active"></span><span class="is-active"></span><span class="is-active"></span><span></span>
+    </div>
+
+    <div class="age-mark" aria-hidden="true">
+      <span class="mark mark--a"></span><span class="mark mark--b"></span>
+    </div>
+
+    <h1 class="age-card__title">What's your sleep schedule?</h1>
+
+    <div class="sleep-fields">
+      <label class="sleep-field">
+        <span>When do you usually wake up?</span>
+        <input type="time" id="wakeTime" value="07:30">
+      </label>
+      <label class="sleep-field">
+        <span>When do you usually go to bed?</span>
+        <input type="time" id="bedTime" value="22:00">
+      </label>
+    </div>
+
+    <a href="interests.html" class="slide__cta intent-continue" id="sleepContinue">Continue</a>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+</body>
+</html>
