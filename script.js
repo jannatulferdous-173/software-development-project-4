@@ -1,21 +1,21 @@
 /* ==========================================================
-   MindMirror — frontend logic
+  MindMirror — frontend logic
 
-   NOTE FOR BACKEND INTEGRATION:
-   Replace the body of `analyzeText()` with a real API call to
-   your NLP service, e.g.:
+  NOTE FOR BACKEND INTEGRATION:
+  Replace the body of `analyzeText()` with a real API call to
+  your NLP service, e.g.:
 
-     async function analyzeText(text) {
-       const res = await fetch("/api/analyze", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ text })
-       });
-       return res.json(); // { mood, note, message, emotions:{joy,sadness,anxiety,anger,calm} }
-     }
+    async function analyzeText(text) {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      return res.json(); // { mood, note, message, emotions:{joy,sadness,anxiety,anger,calm} }
+    }
 
-   Until then, a small keyword-based scorer runs locally so the
-   UI is fully demoable without a backend.
+  Until then, a small keyword-based scorer runs locally so the
+  UI is fully demoable without a backend.
 ========================================================== */
 
 const journalInput   = document.getElementById("journalInput");
@@ -65,6 +65,31 @@ journalInput.addEventListener("input", () => {
   wordCountEl.textContent = countWords(journalInput.value);
 });
 
+/* ==========================================================
+  Quick mood check — a manual, single-select tag above the
+  textarea. Intentionally separate from analyzeText() below.
+========================================================== */
+let selectedMood = null;
+
+(function initMoodPicker(){
+  const picker = document.getElementById("moodPicker");
+  if (!picker) return;
+
+  const options = Array.from(picker.querySelectorAll(".mood-option"));
+  options.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const alreadySelected = btn.classList.contains("is-selected");
+      options.forEach(b => b.classList.remove("is-selected"));
+      if (!alreadySelected){
+        btn.classList.add("is-selected");
+        selectedMood = btn.dataset.mood;
+      } else {
+        selectedMood = null;
+      }
+    });
+  });
+})();
+
 /* ---------- placeholder analysis ---------- */
 function analyzeText(text){
   const lower = text.toLowerCase();
@@ -82,7 +107,6 @@ function analyzeText(text){
     total += hits;
   }
 
-  // fallback so the UI never shows a totally flat result on neutral text
   if (total === 0){
     scores.calm = 1;
     total = 1;
@@ -186,10 +210,8 @@ clearBtn.addEventListener("click", () => {
 });
 
 /* ==========================================================
-   Case studies — reads CASE_STUDIES from cases-data.js
-   Content lives there; this just builds the accordion cards.
+  Case studies — reads CASE_STUDIES from cases-data.js
 ========================================================== */
-
 const MOOD_COLOR = {
   joy: "var(--amber)",
   sadness: "var(--slate)",
@@ -240,82 +262,7 @@ function renderCaseStudies(){
 renderCaseStudies();
 
 /* ==========================================================
-   Guest vs. registered user state
-   ----------------------------------------------------------
-   No backend yet, so "logged in" just means the URL has a
-   ?user=name param (set by auth.js after the login/register
-   form is submitted). History is kept in a plain in-memory
-   array — it resets on refresh. Once there's a backend, swap
-   this for a real session + a fetch() to load/save entries.
-========================================================== */
-
-const params = new URLSearchParams(window.location.search);
-const userName = params.get("user");
-const currentUser = userName ? { name: userName } : null;
-
-const journalHistory = [];
-
-const navGreeting  = document.getElementById("navGreeting");
-const navAuthLink  = document.getElementById("navAuthLink");
-const historySection = document.getElementById("historySection");
-const historyList     = document.getElementById("historyList");
-const historyEmpty    = document.getElementById("historyEmpty");
-
-function applyUserState(){
-  if (!currentUser) return;
-
-  if (navGreeting){
-    navGreeting.textContent = `Hi, ${currentUser.name}`;
-    navGreeting.hidden = false;
-  }
-  if (navAuthLink){
-    navAuthLink.textContent = "Log out";
-    navAuthLink.href = "index.html";
-    navAuthLink.classList.remove("nav__link--cta");
-    navAuthLink.classList.add("nav__link--logout");
-  }
-  if (historySection) historySection.hidden = false;
-}
-
-function recordHistoryEntry(text, result){
-  if (!currentUser || !historyList) return;
-
-  const topEmotionKey = Object.keys(result.emotions)
-    .sort((a, b) => result.emotions[b] - result.emotions[a])[0];
-
-  journalHistory.unshift({
-    snippet: text.length > 60 ? text.slice(0, 60) + "…" : text,
-    mood: result.mood,
-    moodColor: (EMOTION_META[topEmotionKey] && EMOTION_META[topEmotionKey].color) || "var(--slate)",
-    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  });
-
-  renderHistory();
-}
-
-function renderHistory(){
-  if (!historyList) return;
-  if (historyEmpty) historyEmpty.hidden = journalHistory.length > 0;
-
-  historyList.querySelectorAll(".history__item").forEach(el => el.remove());
-
-  journalHistory.forEach(entry => {
-    const li = document.createElement("li");
-    li.className = "history__item";
-    li.style.setProperty("--h-color", entry.moodColor);
-    li.innerHTML = `
-      <span class="history__item__mood">${entry.mood}</span>
-      <span class="history__item__snippet">${entry.snippet}</span>
-      <span class="history__item__time">${entry.time}</span>
-    `;
-    historyList.appendChild(li);
-  });
-}
-
-applyUserState();
-
-/* ==========================================================
-   Onboarding carousel
+  Onboarding carousel
 ========================================================== */
 function initOnboarding(){
   const track = document.getElementById("onboardingTrack");
@@ -364,9 +311,7 @@ function initOnboarding(){
 initOnboarding();
 
 /* ==========================================================
-   Intent question ("What brings you here?") — single-select
-   toggle. No backend yet, so the choice isn't saved anywhere;
-   it's just a visual selection before the person hits Continue.
+  Intent question ("What brings you here?")
 ========================================================== */
 function initIntentOptions(){
   const optionsWrap = document.getElementById("intentOptions");
@@ -382,3 +327,167 @@ function initIntentOptions(){
 }
 
 initIntentOptions();
+
+/* ==========================================================
+  Guest vs. registered user state
+  ----------------------------------------------------------
+  Still no backend, but history now persists in localStorage
+  (keyed per user name) so the streak counter and trend chart
+  survive a refresh. Swap this for a real fetch() once there's
+  an API.
+========================================================== */
+
+const params = new URLSearchParams(window.location.search);
+const userName = params.get("user");
+const currentUser = userName ? { name: userName } : null;
+
+const HISTORY_KEY = currentUser ? `mindmirror-history-${currentUser.name}` : null;
+
+const DEFAULT_HISTORY = [
+  {
+    snippet: "Felt a bit lighter today after finishing that report.",
+    mood: "Bright",
+    moodColor: "var(--amber)",
+    time: "9:14 AM",
+    date: new Date().toISOString()
+  },
+  {
+    snippet: "Couldn't stop thinking about the exam tomorrow, chest felt tight.",
+    mood: "Unsettled",
+    moodColor: "var(--plum)",
+    time: "Yesterday, 11:02 PM",
+    date: new Date(Date.now() - 86400000).toISOString()
+  }
+];
+
+function loadHistory(){
+  if (!HISTORY_KEY) return DEFAULT_HISTORY.slice();
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore corrupt storage */ }
+  return DEFAULT_HISTORY.slice();
+}
+
+function saveHistory(){
+  if (!HISTORY_KEY) return;
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(journalHistory)); } catch (e) {}
+}
+
+const journalHistory = loadHistory();
+
+const navGreeting     = document.getElementById("navGreeting");
+const navAuthLink     = document.getElementById("navAuthLink");
+const historySection  = document.getElementById("historySection");
+const historyList     = document.getElementById("historyList");
+const historyEmpty    = document.getElementById("historyEmpty");
+const streakBadgeEl   = document.getElementById("streakBadge");
+const trendChartWrap  = document.getElementById("trendChartWrap");
+
+function applyUserState(){
+  if (!currentUser) return;
+
+  if (navGreeting){
+    navGreeting.textContent = `Hi, ${currentUser.name}`;
+    navGreeting.hidden = false;
+  }
+  if (navAuthLink){
+    navAuthLink.textContent = "Log out";
+    navAuthLink.href = "index.html";
+    navAuthLink.classList.remove("nav__link--cta");
+    navAuthLink.classList.add("nav__link--logout");
+  }
+  if (historySection) historySection.hidden = false;
+  renderHistory();
+  renderStreak();
+  renderTrend();
+}
+
+function recordHistoryEntry(text, result){
+  if (!currentUser || !historyList) return;
+
+  const topEmotionKey = Object.keys(result.emotions)
+    .sort((a, b) => result.emotions[b] - result.emotions[a])[0];
+
+  journalHistory.unshift({
+    snippet: text.length > 60 ? text.slice(0, 60) + "…" : text,
+    mood: result.mood,
+    moodColor: (EMOTION_META[topEmotionKey] && EMOTION_META[topEmotionKey].color) || "var(--slate)",
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    date: new Date().toISOString()
+  });
+
+  saveHistory();
+  renderHistory();
+  renderStreak();
+  renderTrend();
+}
+
+function renderHistory(){
+  if (!historyList) return;
+  if (historyEmpty) historyEmpty.hidden = journalHistory.length > 0;
+
+  historyList.querySelectorAll(".history__item").forEach(el => el.remove());
+
+  journalHistory.forEach(entry => {
+    const li = document.createElement("li");
+    li.className = "history__item";
+    li.style.setProperty("--h-color", entry.moodColor);
+    li.innerHTML = `
+      <span class="history__item__mood">${entry.mood}</span>
+      <span class="history__item__snippet"></span>
+      <span class="history__item__time">${entry.time}</span>
+    `;
+    li.querySelector(".history__item__snippet").textContent = entry.snippet;
+    historyList.appendChild(li);
+  });
+}
+
+/* --- streak counter — "N days in a row" --- */
+function renderStreak(){
+  if (!streakBadgeEl) return;
+  const dates = journalHistory.map(e => e.date).filter(Boolean);
+  const streak = calculateStreak(dates);
+
+  if (streak <= 0){
+    streakBadgeEl.hidden = true;
+    return;
+  }
+  streakBadgeEl.hidden = false;
+  streakBadgeEl.innerHTML = `<span class="streak-badge__flame">🔥</span> ${streak} day${streak === 1 ? "" : "s"} in a row`;
+}
+
+/* --- weekly mood trend chart, built from real history --- */
+function renderTrend(){
+  if (!trendChartWrap) return;
+
+  const byDay = {};
+  journalHistory.forEach(entry => {
+    if (!entry.date) return;
+    const d = new Date(entry.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const valence = (MOOD_VALENCE[entry.mood] || { score: 50, color: "var(--slate)" });
+    if (!byDay[key]) byDay[key] = { total: 0, count: 0, date: d, color: valence.color, mood: entry.mood };
+    byDay[key].total += valence.score;
+    byDay[key].count += 1;
+  });
+
+  const today = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--){
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const label = d.toLocaleDateString([], { weekday: "short" });
+    if (byDay[key]){
+      const avg = Math.round(byDay[key].total / byDay[key].count);
+      days.push({ label, score: avg, color: byDay[key].color, mood: byDay[key].mood });
+    } else {
+      days.push({ label, score: 0, color: "var(--line-deep)", mood: "No entry" });
+    }
+  }
+
+  renderMoodTrendChart(trendChartWrap, days);
+}
+
+applyUserState();
