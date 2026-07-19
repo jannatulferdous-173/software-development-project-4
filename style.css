@@ -174,6 +174,16 @@ button{ font-family: inherit; }
   overflow-y: auto;
 }
 .slide--cover .slide__cta{ margin-top: .6rem; }
+.slide__account-link{
+  margin-top: .9rem;
+  font-size: .85rem;
+  color: var(--ink);
+  opacity: .6;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: opacity .2s var(--ease);
+}
+.slide__account-link:hover{ opacity: 1; }
 
 @media (min-width: 640px){
   .slide--cover{
@@ -480,6 +490,42 @@ button{ font-family: inherit; }
   display:flex; justify-content:space-between; align-items:baseline;
 }
 .panel__count{ font-family: var(--mono); font-size: .8rem; opacity:.55; }
+
+/* --- quick mood check: single-select grid of 8 pastel moods,
+   optional and separate from the NLP text analysis below --- */
+.mood-picker__label{
+  font-family: var(--mono); font-size: .68rem; letter-spacing:.08em;
+  text-transform: uppercase; opacity:.5;
+  margin: .8rem 0 .6rem;
+}
+.mood-picker{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .5rem;
+  margin-bottom: .4rem;
+}
+.mood-option{
+  display:flex; flex-direction:column; align-items:center; gap:.3rem;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  padding: .6rem .3rem;
+  cursor: pointer;
+  transition: transform .2s var(--ease), border-color .2s var(--ease);
+}
+.mood-option:hover{ transform: translateY(-1px); }
+.mood-option.is-selected{ border-color: var(--ink); }
+.mood-option__icon{ font-size: 1.3rem; }
+.mood-option__label{
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+@media (max-width: 420px){
+  .mood-picker{ grid-template-columns: repeat(4, 1fr); gap:.4rem; }
+  .mood-option{ padding: .5rem .2rem; }
+  .mood-option__icon{ font-size: 1.1rem; }
+  .mood-option__label{ font-size: .65rem; }
+}
 
 .journal{
   flex:1;
@@ -825,6 +871,42 @@ button{ font-family: inherit; }
   opacity:.65;
   margin: 0 0 1.6rem;
 }
+
+.auth-social{ display:flex; flex-direction:column; gap:.7rem; margin-bottom: 1.3rem; }
+.auth-social-btn{
+  display:flex; align-items:center; justify-content:center; gap:.6rem;
+  width:100%;
+  font-family: var(--body);
+  font-size: .95rem;
+  font-weight: 500;
+  padding: .75rem 1rem;
+  border-radius: 100px;
+  border: 1px solid rgba(15,30,43,.12);
+  cursor: pointer;
+  transition: transform .2s var(--ease), background .2s var(--ease);
+}
+.auth-social-btn:hover{ transform: translateY(-1px); }
+.auth-social-btn__icon{ width: 18px; height: 18px; flex-shrink:0; }
+.auth-social-btn--google{
+  background: var(--ink);
+  color: var(--paper);
+  border-color: transparent;
+}
+.auth-social-btn--google:hover{ background: var(--ink-soft); }
+
+.auth-divider{
+  display:flex; align-items:center; gap:.8rem;
+  margin: 0 0 1.3rem;
+  font-size: .78rem;
+  color: rgba(15,30,43,.45);
+}
+.auth-divider::before, .auth-divider::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background: rgba(15,30,43,.14);
+}
+
 .auth-form{ display:flex; flex-direction:column; gap: 1.1rem; }
 .auth-field{ display:flex; flex-direction:column; gap: .4rem; font-size: .85rem; }
 .auth-field span{ opacity:.7; }
@@ -873,6 +955,117 @@ button{ font-family: inherit; }
 }
 .auth-card__switch a{ color: var(--ink); font-weight:600; text-decoration: underline; text-underline-offset: 3px; }
 
+/* ---------------- Age-question page (after login/register) ---------------- */
+.age-card{
+  position: relative;
+  text-align: center;
+}
+.age-back{
+  position: absolute;
+  top: clamp(1.4rem,3vw,1.8rem);
+  left: clamp(1.4rem,3vw,1.8rem);
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15,30,43,.06);
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.age-back:hover{ background: rgba(15,30,43,.12); }
+.age-mark{
+  width: 56px; height: 56px;
+  position: relative;
+  margin: 1.6rem auto 1.2rem;
+}
+.age-mark .mark--a{ transform: translate(-10px,-6px); }
+.age-mark .mark--b{ transform: translate(10px,6px) scaleX(-1); }
+.age-card__title{
+  font-size: clamp(1.4rem,3.4vw,1.8rem);
+  margin: 0 0 1.8rem;
+}
+.age-options{ margin-top: 0; }
+.age-card .intent-continue{ width: 100%; text-align:center; margin-top: .4rem; }
+
+.q-progress{
+  display:flex; justify-content:center; gap:.4rem;
+  margin: 0 0 .4rem;
+}
+.q-progress span{
+  width: 7px; height: 7px; border-radius:50%;
+  background: rgba(15,30,43,.15);
+}
+.q-progress span.is-active{ background: var(--amber); }
+
+.sleep-fields{
+  display:flex; flex-direction:column; gap: 1.1rem;
+  margin: 1.6rem 0 2rem;
+}
+.sleep-field{
+  display:flex; flex-direction:column; gap:.5rem;
+  font-size: .85rem;
+  color: rgba(15,30,43,.65);
+}
+.sleep-field input[type="time"]{
+  font-family: var(--body);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: .9rem 1.2rem;
+  box-shadow: 0 12px 25px -18px rgba(15,30,43,.35);
+}
+.sleep-field input[type="time"]:focus{
+  outline:none;
+  border-color: var(--amber);
+}
+
+/* ---------------- Interests page (multi-select grid) ---------------- */
+.interests-card{ max-width: 480px; }
+.interests-sub{
+  font-size: .88rem;
+  color: rgba(15,30,43,.55);
+  margin: -1.2rem 0 1.6rem;
+}
+.interests-grid{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .7rem;
+  margin-bottom: 1.8rem;
+}
+.interest-card{
+  display:flex; flex-direction:column; align-items:flex-start; gap: 1.6rem;
+  border: none;
+  border-radius: 16px;
+  padding: .9rem .8rem;
+  min-height: 92px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform .2s var(--ease);
+}
+.interest-card:hover{ transform: translateY(-1px); }
+.interest-card__icon{ font-size: 1.2rem; }
+.interest-card__label{
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+.interest-card.is-selected{
+  background: var(--ink) !important;
+}
+.interest-card.is-selected .interest-card__label{ color: var(--paper); }
+
+@media (max-width: 420px){
+  .interests-grid{ gap: .5rem; }
+  .interest-card{ padding: .7rem .6rem; min-height: 80px; }
+  .interest-card__label{ font-size: .76rem; }
+}
+
 /* ---------------- Responsive ---------------- */
 @media (max-width: 880px){
   .mirror-frame{ grid-template-columns: 1fr; }
@@ -882,4 +1075,3 @@ button{ font-family: inherit; }
   .panel{ min-height: unset; }
   .journal{ min-height: 220px; }
 }
-
