@@ -757,3 +757,17 @@ function renderWordCloud(){
 })();
 
 applyUserState();
+
+/* ==========================================================
+   Fix: clicking a nav link like "Breathe" (#breathing) can
+   land in the wrong spot, because the browser's automatic
+   scroll-to-hash sometimes runs before the onboarding carousel
+   and other layout above it has finished setting up. Re-doing
+   the scroll once everything on the page is ready fixes it.
+========================================================== */
+if (window.location.hash){
+  const target = document.querySelector(window.location.hash);
+  if (target){
+    setTimeout(() => target.scrollIntoView({ behavior: "instant", block: "start" }), 50);
+  }
+}
