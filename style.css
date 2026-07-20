@@ -13,8 +13,9 @@
   --ink-soft:   #16293A;
   --paper:      #F7F1E4;
   --paper-dim:  #EDE5D2;
+  --ink-rgb:    15,30,43;                     /* same navy as --ink, as r,g,b — flips in dark mode */
   --line:       rgba(247,241,228,0.14);      /* light line — use inside dark cards */
-  --line-deep:  rgba(15,30,43,0.14);          /* dark line — use directly on the lavender page */
+  --line-deep:  rgba(var(--ink-rgb),0.14);    /* dark line — use directly on the page background */
 
   --amber:      #D9A05B;   /* joy / warmth   */
   --slate:      #5B7C99;   /* calm           */
@@ -37,6 +38,18 @@
   --ease: cubic-bezier(.22,.61,.36,1);
 }
 
+/* ---------------- Dark theme ----------------
+   Toggled by setting data-theme="dark" on <html> (see script.js).
+   Only the PAGE background and page-level muted text/lines flip —
+   things like the paper cards, dark "mirror" cards, and onboarding
+   pastel slides keep their own fixed colors on purpose, the same
+   way a real paper page or a mirror doesn't change color when you
+   turn the room lights off. */
+[data-theme="dark"]{
+  --bg: #0F1E2B;
+  --ink-rgb: 247,241,228;
+}
+
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
@@ -46,7 +59,7 @@ html{ scroll-behavior: smooth; }
 body{
   margin:0;
   background: var(--bg);
-  color: var(--ink);
+  color: rgb(var(--ink-rgb));
   font-family: var(--body);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -357,7 +370,7 @@ button{ font-family: inherit; }
 }
 .nav__link--cta:hover{ border-color: transparent; opacity:.9; }
 .nav__link--logout{
-  color: var(--ink);
+  color: rgb(var(--ink-rgb));
   opacity:.55;
 }
 .nav__link--logout:hover{ opacity:1; border-color: var(--amber); }
@@ -367,6 +380,17 @@ button{ font-family: inherit; }
   font-family: var(--mono);
 }
 .nav__link:hover{ opacity:1; border-color: var(--amber); }
+.theme-toggle{
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ink-rgb),.15);
+  background: rgba(var(--ink-rgb),.05);
+  cursor: pointer;
+  font-size: 1rem;
+  display:flex; align-items:center; justify-content:center;
+  transition: transform .2s var(--ease), background .2s var(--ease);
+}
+.theme-toggle:hover{ transform: translateY(-1px); background: rgba(var(--ink-rgb),.1); }
 @media (min-width: 560px){
   .nav__link--secondary{ display: inline; }
 }
@@ -384,7 +408,7 @@ button{ font-family: inherit; }
 }
 .history__sub{
   font-size: .9rem;
-  color: rgba(15,30,43,.6);
+  color: rgba(var(--ink-rgb),.6);
   margin: 0;
 }
 .history__list{
@@ -393,7 +417,7 @@ button{ font-family: inherit; }
 }
 .history__empty{
   font-size: .9rem;
-  color: rgba(15,30,43,.5);
+  color: rgba(var(--ink-rgb),.5);
   border: 1px dashed var(--line-deep);
   border-radius: 12px;
   padding: 1.2rem;
@@ -423,6 +447,85 @@ button{ font-family: inherit; }
   flex-shrink:0; font-family: var(--mono); font-size:.72rem;
   color: rgba(247,241,228,.4);
 }
+.history__item__download{
+  flex-shrink:0;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(247,241,228,.08);
+  color: var(--paper);
+  cursor: pointer;
+  font-size: .8rem;
+  display:flex; align-items:center; justify-content:center;
+  transition: background .2s var(--ease);
+}
+.history__item__download:hover{ background: rgba(247,241,228,.18); }
+
+/* ---------------- Mood trend chart ---------------- */
+.mood-chart{ margin-top: 2rem; }
+.mood-chart__label{
+  font-family: var(--mono); font-size: .7rem; letter-spacing:.08em;
+  text-transform: uppercase; opacity:.55; margin: 0 0 .8rem;
+}
+.mood-chart__svg{
+  width: 100%; height: 140px;
+  display:block;
+}
+.mood-chart__axis{
+  display:flex; justify-content:space-between;
+  padding: 0 clamp(20px,5%,40px);
+  margin-top: .3rem;
+  font-size: .72rem;
+  color: rgba(var(--ink-rgb),.5);
+}
+
+/* ---------------- Word cloud ---------------- */
+.word-cloud{ margin-top: 2rem; }
+.word-cloud__label{
+  font-family: var(--mono); font-size: .7rem; letter-spacing:.08em;
+  text-transform: uppercase; opacity:.55; margin: 0 0 .9rem;
+}
+.word-cloud__words{
+  display:flex; flex-wrap:wrap; gap: .5rem .9rem;
+  align-items: baseline;
+}
+.word-cloud__word{
+  font-family: var(--display);
+  color: var(--amber);
+  line-height: 1;
+}
+.word-cloud__word:nth-child(3n+2){ color: var(--plum); }
+.word-cloud__word:nth-child(3n+3){ color: var(--slate); }
+.word-cloud__empty{
+  font-size: .88rem;
+  color: rgba(var(--ink-rgb),.5);
+}
+
+/* ---------------- Breathing exercise ---------------- */
+.breathing{
+  padding: clamp(3rem,7vw,5rem) clamp(1.2rem,5vw,3.5rem) clamp(2rem,5vw,3rem);
+  max-width: 1180px;
+  margin: 0 auto;
+  border-top: 1px solid var(--line-deep);
+}
+.breathing__box{
+  display:flex; flex-direction:column; align-items:center; gap: 1.8rem;
+  margin-top: 1.5rem;
+}
+.breathing__circle{
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--amber), var(--plum));
+  display:flex; align-items:center; justify-content:center;
+  color: var(--paper);
+  font-weight: 600;
+  font-size: .95rem;
+  transition: transform 4s ease-in-out;
+  box-shadow: 0 20px 45px -20px rgba(0,0,0,.4);
+}
+.breathing__circle.is-inhale,
+.breathing__circle.is-hold{ transform: scale(1.4); }
+.breathing__circle.is-exhale{ transform: scale(1); }
 
 /* ---------------- Hero ---------------- */
 .hero{
@@ -490,6 +593,18 @@ button{ font-family: inherit; }
   display:flex; justify-content:space-between; align-items:baseline;
 }
 .panel__count{ font-family: var(--mono); font-size: .8rem; opacity:.55; }
+
+.streak-badge{
+  display:inline-flex; align-items:center; gap:.3rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--rust);
+  background: rgba(181,101,79,.1);
+  border-radius: 100px;
+  padding: .3rem .7rem;
+  margin: .7rem 0 0;
+  width: fit-content;
+}
 
 /* --- quick mood check: single-select grid of 8 pastel moods,
    optional and separate from the NLP text analysis below --- */
@@ -702,7 +817,7 @@ button{ font-family: inherit; }
   margin: .6rem 0 1rem;
 }
 .cases__sub{
-  color: rgba(15,30,43,.7);
+  color: rgba(var(--ink-rgb),.7);
   font-size: .98rem;
   margin: 0;
 }
@@ -831,21 +946,21 @@ button{ font-family: inherit; }
   display:block; font-family: var(--mono); color: var(--slate);
   font-size:.8rem; margin-bottom:.5rem;
 }
-.about__item p{ margin:0; color: rgba(15,30,43,.72); font-size:.95rem; }
+.about__item p{ margin:0; color: rgba(var(--ink-rgb),.72); font-size:.95rem; }
 
 /* ---------------- Footer ---------------- */
 .footer{
   text-align:center;
   padding: 2.2rem 1rem 3rem;
   font-size: .8rem;
-  color: rgba(15,30,43,.5);
+  color: rgba(var(--ink-rgb),.5);
 }
 
 /* ---------------- Auth pages (login / register) ---------------- */
 .auth-body{ min-height: 100dvh; display:flex; flex-direction:column; }
 .nav__brand{
   display:flex; align-items:center; gap:.7rem;
-  text-decoration:none; color: var(--ink);
+  text-decoration:none; color: rgb(var(--ink-rgb));
 }
 .auth{
   flex:1;
