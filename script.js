@@ -1,22 +1,60 @@
 /* ==========================================================
-  MindMirror — frontend logic
+   MindMirror — frontend logic
 
-  NOTE FOR BACKEND INTEGRATION:
-  Replace the body of `analyzeText()` with a real API call to
-  your NLP service, e.g.:
+   NOTE FOR BACKEND INTEGRATION:
+   Replace the body of `analyzeText()` with a real API call to
+   your NLP service, e.g.:
 
-    async function analyzeText(text) {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      });
-      return res.json(); // { mood, note, message, emotions:{joy,sadness,anxiety,anger,calm} }
-    }
+     async function analyzeText(text) {
+       const res = await fetch("/api/analyze", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ text })
+       });
+       return res.json(); // { mood, note, message, emotions:{joy,sadness,anxiety,anger,calm} }
+     }
 
-  Until then, a small keyword-based scorer runs locally so the
-  UI is fully demoable without a backend.
+   Until then, a small keyword-based scorer runs locally so the
+   UI is fully demoable without a backend.
 ========================================================== */
+
+/* ==========================================================
+   Theme (light/dark) — stored in localStorage so it's
+   remembered across pages and future visits. Runs immediately
+   (not inside a DOMContentLoaded handler) so the page never
+   flashes the wrong theme before JS kicks in.
+========================================================== */
+(function applyStoredTheme(){
+  const saved = localStorage.getItem("mindmirror-theme");
+  if (saved === "dark"){
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+})();
+
+function initThemeToggle(){
+  const btn = document.getElementById("themeToggle");
+  if (!btn) return;
+
+  const setIcon = () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    btn.textContent = isDark ? "☀️" : "🌙";
+  };
+  setIcon();
+
+  btn.addEventListener("click", () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (isDark){
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("mindmirror-theme", "light");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+      localStorage.setItem("mindmirror-theme", "dark");
+    }
+    setIcon();
+  });
+}
+
+initThemeToggle();
 
 const journalInput   = document.getElementById("journalInput");
 const wordCountEl    = document.getElementById("wordCount");
@@ -66,8 +104,12 @@ journalInput.addEventListener("input", () => {
 });
 
 /* ==========================================================
-  Quick mood check — a manual, single-select tag above the
-  textarea. Intentionally separate from analyzeText() below.
+   Quick mood check — a manual, single-select tag above the
+   textarea. This is INTENTIONALLY separate from analyzeText()
+   below: the NLP analysis only ever looks at the written text,
+   never at this selection. It's here so the person can note
+   their mood at a glance; wiring it into a backend later would
+   mean sending `selectedMood` alongside the journal text.
 ========================================================== */
 let selectedMood = null;
 
@@ -107,6 +149,7 @@ function analyzeText(text){
     total += hits;
   }
 
+  // fallback so the UI never shows a totally flat result on neutral text
   if (total === 0){
     scores.calm = 1;
     total = 1;
@@ -210,8 +253,39 @@ clearBtn.addEventListener("click", () => {
 });
 
 /* ==========================================================
-  Case studies — reads CASE_STUDIES from cases-data.js
+   Prompt suggestions — for when someone doesn't know where to
+   start. Only fills the textarea if it's empty, so it never
+   overwrites something already written.
 ========================================================== */
+const WRITING_PROMPTS = [
+  "What's taking up the most space in your head right now?",
+  "Describe today in three words, then explain why you picked them.",
+  "What's something you didn't say out loud today, but wish you had?",
+  "Who or what made you feel most like yourself this week?",
+  "What's a small thing that helped today, even a little?",
+  "If today had a weather forecast, what would it be?",
+  "What are you avoiding thinking about right now?",
+  "What's one thing you're looking forward to, even if it's small?"
+];
+
+const promptBtn = document.getElementById("promptBtn");
+if (promptBtn){
+  promptBtn.addEventListener("click", () => {
+    const prompt = WRITING_PROMPTS[Math.floor(Math.random() * WRITING_PROMPTS.length)];
+    if (!journalInput.value.trim()){
+      journalInput.value = prompt + "\n\n";
+      journalInput.focus();
+      journalInput.setSelectionRange(journalInput.value.length, journalInput.value.length);
+      wordCountEl.textContent = countWords(journalInput.value);
+    }
+  });
+}
+
+/* ==========================================================
+   Case studies — reads CASE_STUDIES from cases-data.js
+   Content lives there; this just builds the accordion cards.
+========================================================== */
+
 const MOOD_COLOR = {
   joy: "var(--amber)",
   sadness: "var(--slate)",
@@ -262,7 +336,7 @@ function renderCaseStudies(){
 renderCaseStudies();
 
 /* ==========================================================
-  Onboarding carousel
+   Onboarding carousel
 ========================================================== */
 function initOnboarding(){
   const track = document.getElementById("onboardingTrack");
@@ -311,7 +385,9 @@ function initOnboarding(){
 initOnboarding();
 
 /* ==========================================================
-  Intent question ("What brings you here?")
+   Intent question ("What brings you here?") — single-select
+   toggle. No backend yet, so the choice isn't saved anywhere;
+   it's just a visual selection before the person hits Continue.
 ========================================================== */
 function initIntentOptions(){
   const optionsWrap = document.getElementById("intentOptions");
@@ -329,60 +405,74 @@ function initIntentOptions(){
 initIntentOptions();
 
 /* ==========================================================
-  Guest vs. registered user state
-  ----------------------------------------------------------
-  Still no backend, but history now persists in localStorage
-  (keyed per user name) so the streak counter and trend chart
-  survive a refresh. Swap this for a real fetch() once there's
-  an API.
+   Guest vs. registered user state
+   ----------------------------------------------------------
+   No backend yet, so "logged in" just means the URL has a
+   ?user=name param (set by auth.js after the login/register
+   form is submitted). History is kept in a plain in-memory
+   array — it resets on refresh. Once there's a backend, swap
+   this for a real session + a fetch() to load/save entries.
 ========================================================== */
 
 const params = new URLSearchParams(window.location.search);
 const userName = params.get("user");
 const currentUser = userName ? { name: userName } : null;
 
-const HISTORY_KEY = currentUser ? `mindmirror-history-${currentUser.name}` : null;
+function daysAgo(n, hour, minute){
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(hour, minute, 0, 0);
+  return d;
+}
 
-const DEFAULT_HISTORY = [
+const journalHistory = [
   {
+    fullText: "Felt a bit lighter today after finishing that report. Small win, but it counts.",
     snippet: "Felt a bit lighter today after finishing that report.",
     mood: "Bright",
+    moodKey: "joy",
     moodColor: "var(--amber)",
-    time: "9:14 AM",
-    date: new Date().toISOString()
+    date: daysAgo(0, 9, 14)
   },
   {
+    fullText: "Couldn't stop thinking about the exam tomorrow, chest felt tight the whole evening.",
     snippet: "Couldn't stop thinking about the exam tomorrow, chest felt tight.",
     mood: "Unsettled",
+    moodKey: "anxiety",
     moodColor: "var(--plum)",
-    time: "Yesterday, 11:02 PM",
-    date: new Date(Date.now() - 86400000).toISOString()
+    date: daysAgo(1, 23, 2)
+  },
+  {
+    fullText: "Quiet day. Made tea, read a bit, didn't talk to anyone and that felt okay for once.",
+    snippet: "Quiet day. Made tea, read a bit, didn't talk to anyone.",
+    mood: "Steady",
+    moodKey: "calm",
+    moodColor: "var(--moss)",
+    date: daysAgo(2, 20, 40)
+  },
+  {
+    fullText: "Argued with my brother again over something small. Still feel annoyed about it.",
+    snippet: "Argued with my brother again over something small.",
+    mood: "Charged",
+    moodKey: "anger",
+    moodColor: "var(--rust)",
+    date: daysAgo(3, 18, 5)
+  },
+  {
+    fullText: "Missed my friend a lot today. Called them and just talked for an hour, felt lonely before that.",
+    snippet: "Missed my friend a lot today. Called them and just talked.",
+    mood: "Heavy",
+    moodKey: "sadness",
+    moodColor: "var(--slate)",
+    date: daysAgo(4, 21, 30)
   }
 ];
 
-function loadHistory(){
-  if (!HISTORY_KEY) return DEFAULT_HISTORY.slice();
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) { /* ignore corrupt storage */ }
-  return DEFAULT_HISTORY.slice();
-}
-
-function saveHistory(){
-  if (!HISTORY_KEY) return;
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(journalHistory)); } catch (e) {}
-}
-
-const journalHistory = loadHistory();
-
-const navGreeting     = document.getElementById("navGreeting");
-const navAuthLink     = document.getElementById("navAuthLink");
-const historySection  = document.getElementById("historySection");
+const navGreeting  = document.getElementById("navGreeting");
+const navAuthLink  = document.getElementById("navAuthLink");
+const historySection = document.getElementById("historySection");
 const historyList     = document.getElementById("historyList");
 const historyEmpty    = document.getElementById("historyEmpty");
-const streakBadgeEl   = document.getElementById("streakBadge");
-const trendChartWrap  = document.getElementById("trendChartWrap");
 
 function applyUserState(){
   if (!currentUser) return;
@@ -399,8 +489,6 @@ function applyUserState(){
   }
   if (historySection) historySection.hidden = false;
   renderHistory();
-  renderStreak();
-  renderTrend();
 }
 
 function recordHistoryEntry(text, result){
@@ -409,18 +497,35 @@ function recordHistoryEntry(text, result){
   const topEmotionKey = Object.keys(result.emotions)
     .sort((a, b) => result.emotions[b] - result.emotions[a])[0];
 
+  // MOOD_COPY maps keys ("joy","sadness",...,"mixed") to display words
+  // ("Bright","Heavy",...,"Mixed"); reverse that to store the key, not
+  // just the word, so charting/export logic has something consistent
+  // to work with regardless of which word is shown.
+  const moodKey = Object.keys(MOOD_COPY).find(key => MOOD_COPY[key].word === result.mood) || topEmotionKey;
+
   journalHistory.unshift({
+    fullText: text,
     snippet: text.length > 60 ? text.slice(0, 60) + "…" : text,
     mood: result.mood,
+    moodKey: moodKey,
     moodColor: (EMOTION_META[topEmotionKey] && EMOTION_META[topEmotionKey].color) || "var(--slate)",
-    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    date: new Date().toISOString()
+    date: new Date()
   });
 
-  saveHistory();
   renderHistory();
-  renderStreak();
-  renderTrend();
+}
+
+function formatEntryTime(date){
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (isToday) return time;
+  if (isYesterday) return `Yesterday, ${time}`;
+  return date.toLocaleDateString([], { month: "short", day: "numeric" }) + `, ${time}`;
 }
 
 function renderHistory(){
@@ -429,65 +534,226 @@ function renderHistory(){
 
   historyList.querySelectorAll(".history__item").forEach(el => el.remove());
 
-  journalHistory.forEach(entry => {
+  journalHistory.forEach((entry, i) => {
     const li = document.createElement("li");
     li.className = "history__item";
     li.style.setProperty("--h-color", entry.moodColor);
     li.innerHTML = `
       <span class="history__item__mood">${entry.mood}</span>
-      <span class="history__item__snippet"></span>
-      <span class="history__item__time">${entry.time}</span>
+      <span class="history__item__snippet">${entry.snippet}</span>
+      <span class="history__item__time">${formatEntryTime(entry.date)}</span>
+      <button type="button" class="history__item__download" data-entry-index="${i}" aria-label="Download this entry" title="Download">⬇</button>
     `;
-    li.querySelector(".history__item__snippet").textContent = entry.snippet;
+    li.querySelector(".history__item__download").addEventListener("click", () => downloadEntry(entry));
     historyList.appendChild(li);
   });
+
+  renderStreak();
+  renderMoodChart();
+  renderWordCloud();
 }
 
-/* --- streak counter — "N days in a row" --- */
-function renderStreak(){
-  if (!streakBadgeEl) return;
-  const dates = journalHistory.map(e => e.date).filter(Boolean);
-  const streak = calculateStreak(dates);
-
-  if (streak <= 0){
-    streakBadgeEl.hidden = true;
-    return;
-  }
-  streakBadgeEl.hidden = false;
-  streakBadgeEl.innerHTML = `<span class="streak-badge__flame">🔥</span> ${streak} day${streak === 1 ? "" : "s"} in a row`;
-}
-
-/* --- weekly mood trend chart, built from real history --- */
-function renderTrend(){
-  if (!trendChartWrap) return;
-
-  const byDay = {};
-  journalHistory.forEach(entry => {
-    if (!entry.date) return;
-    const d = new Date(entry.date);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const valence = (MOOD_VALENCE[entry.mood] || { score: 50, color: "var(--slate)" });
-    if (!byDay[key]) byDay[key] = { total: 0, count: 0, date: d, color: valence.color, mood: entry.mood };
-    byDay[key].total += valence.score;
-    byDay[key].count += 1;
+/* ==========================================================
+   Export/Download — turns one history entry into a plain .txt
+   file the browser downloads. No backend needed: build a Blob
+   in memory and trigger a download via a throwaway <a> link.
+========================================================== */
+function downloadEntry(entry){
+  const dateLabel = entry.date.toLocaleString([], {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    hour: "2-digit", minute: "2-digit"
   });
 
-  const today = new Date();
-  const days = [];
-  for (let i = 6; i >= 0; i--){
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const label = d.toLocaleDateString([], { weekday: "short" });
-    if (byDay[key]){
-      const avg = Math.round(byDay[key].total / byDay[key].count);
-      days.push({ label, score: avg, color: byDay[key].color, mood: byDay[key].mood });
-    } else {
-      days.push({ label, score: 0, color: "var(--line-deep)", mood: "No entry" });
-    }
+  const content =
+`MindMirror journal entry
+${dateLabel}
+Mood: ${entry.mood}
+
+${entry.fullText}
+`;
+
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `mindmirror-entry-${entry.date.toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ==========================================================
+   Streak counter — counts consecutive calendar days (going
+   backward from today) that have at least one journal entry.
+   Purely derived from journalHistory, no separate tracking.
+========================================================== */
+
+const streakBadge = document.getElementById("streakBadge");
+const streakCountEl = document.getElementById("streakCount");
+
+function calculateStreak(){
+  if (journalHistory.length === 0) return 0;
+
+  const entryDays = new Set(
+    journalHistory.map(entry => entry.date.toDateString())
+  );
+
+  let streak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+
+  while (entryDays.has(cursor.toDateString())){
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
   }
 
-  renderMoodTrendChart(trendChartWrap, days);
+  return streak;
 }
+
+function renderStreak(){
+  if (!streakBadge || !streakCountEl) return;
+  const streak = calculateStreak();
+  streakBadge.hidden = streak === 0;
+  streakCountEl.textContent = streak;
+}
+
+/* ==========================================================
+   Mood trend chart — a small hand-built SVG line chart of the
+   last 7 days (no chart library). Each mood word maps to a
+   rough valence number so multiple moods can sit on one axis:
+   very negative (sadness) to very positive (joy).
+========================================================== */
+const MOOD_VALENCE = { joy: 2, calm: 1, mixed: 0, anxiety: -1, anger: -1.5, sadness: -2 };
+
+function renderMoodChart(){
+  const svg = document.getElementById("moodChartSvg");
+  const axis = document.getElementById("moodChartAxis");
+  if (!svg || !axis) return;
+
+  const days = [];
+  for (let i = 6; i >= 0; i--){
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+
+  const width = 700, height = 180, marginX = 40, marginTop = 20, marginBottom = 30;
+  const usableHeight = height - marginTop - marginBottom;
+  const stepX = (width - marginX * 2) / 6;
+  const valenceToY = v => marginTop + (1 - (v + 2) / 4) * usableHeight;
+
+  const points = [];
+  days.forEach((day, i) => {
+    const dayEntries = journalHistory.filter(e => e.date.toDateString() === day.toDateString());
+    if (dayEntries.length === 0) return;
+    const avgValence = dayEntries.reduce((sum, e) => sum + (MOOD_VALENCE[e.moodKey] ?? 0), 0) / dayEntries.length;
+    points.push({ x: marginX + stepX * i, y: valenceToY(avgValence), color: dayEntries[0].moodColor });
+  });
+
+  const neutralY = valenceToY(0);
+  let svgContent = `<line x1="${marginX}" y1="${neutralY}" x2="${width - marginX}" y2="${neutralY}" stroke="rgba(var(--ink-rgb),.15)" stroke-dasharray="4 4" />`;
+
+  if (points.length > 1){
+    const linePoints = points.map(p => `${p.x},${p.y}`).join(" ");
+    svgContent += `<polyline points="${linePoints}" fill="none" stroke="rgb(var(--ink-rgb))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" />`;
+  }
+  points.forEach(p => {
+    svgContent += `<circle cx="${p.x}" cy="${p.y}" r="6" fill="${p.color}" stroke="var(--paper)" stroke-width="2" />`;
+  });
+
+  svg.innerHTML = svgContent;
+  axis.innerHTML = days.map(d => `<span>${d.toLocaleDateString([], { weekday: "short" })}</span>`).join("");
+}
+
+/* ==========================================================
+   Word cloud — most-used words across all saved entries, sized
+   by frequency. A small stopword list filters out filler words
+   so what's left actually says something about the writing.
+========================================================== */
+const STOPWORDS = new Set([
+  "the","a","an","and","or","but","is","are","was","were","am","be","been","being",
+  "to","of","in","on","at","for","with","about","today","felt","feel","feeling",
+  "that","this","its","just","still","not","no","so","very","really","much",
+  "more","than","then","there","here","what","who","which","when","where","why",
+  "how","again","also","if","because","as","by","from","up","down","out","over",
+  "under","after","before","while","all","some","can","could","would","should",
+  "will","did","do","does","have","has","had","dont","didnt","couldnt","wasnt",
+  "werent","thats","and","one","get","got","like"
+]);
+
+function renderWordCloud(){
+  const wrap = document.getElementById("wordCloudWords");
+  if (!wrap) return;
+
+  const counts = {};
+  journalHistory.forEach(entry => {
+    const words = entry.fullText.toLowerCase().match(/[a-z']+/g) || [];
+    words.forEach(w => {
+      if (w.length < 3 || STOPWORDS.has(w)) return;
+      counts[w] = (counts[w] || 0) + 1;
+    });
+  });
+
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  if (top.length === 0){
+    wrap.innerHTML = `<span class="word-cloud__empty">Not enough writing yet to spot patterns.</span>`;
+    return;
+  }
+
+  const maxCount = top[0][1];
+  wrap.innerHTML = top.map(([word, count]) => {
+    const size = (0.85 + (count / maxCount) * 1.15).toFixed(2);
+    return `<span class="word-cloud__word" style="font-size:${size}rem">${word}</span>`;
+  }).join(" ");
+}
+
+/* ==========================================================
+   Breathing exercise — a simple guided in/hold/out cycle.
+   The circle's scale transition is CSS-driven (4s ease-in-out)
+   so this JS only needs to toggle a class and swap the label
+   text in step with it.
+========================================================== */
+(function initBreathing(){
+  const circle = document.getElementById("breathingCircle");
+  const text = document.getElementById("breathingText");
+  const toggleBtn = document.getElementById("breathingToggle");
+  if (!circle || !text || !toggleBtn) return;
+
+  const PHASES = [
+    { label: "Breathe in", duration: 4000, className: "is-inhale" },
+    { label: "Hold",       duration: 4000, className: "is-hold" },
+    { label: "Breathe out", duration: 4000, className: "is-exhale" }
+  ];
+  let phaseIndex = 0;
+  let timer = null;
+
+  function runPhase(){
+    const phase = PHASES[phaseIndex];
+    text.textContent = phase.label;
+    circle.className = "breathing__circle " + phase.className;
+    phaseIndex = (phaseIndex + 1) % PHASES.length;
+    timer = setTimeout(runPhase, phase.duration);
+  }
+
+  function start(){
+    phaseIndex = 0;
+    runPhase();
+    toggleBtn.textContent = "Stop";
+  }
+
+  function stop(){
+    clearTimeout(timer);
+    timer = null;
+    circle.className = "breathing__circle";
+    text.textContent = "Start";
+    toggleBtn.textContent = "Begin";
+  }
+
+  toggleBtn.addEventListener("click", () => {
+    if (timer) stop(); else start();
+  });
+})();
 
 applyUserState();
