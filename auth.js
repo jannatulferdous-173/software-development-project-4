@@ -1,6 +1,22 @@
 /* ==========================================================
    MindMirror — auth page logic
    ----------------------------------------------------------
+
+   Theme note: the actual toggle button only lives in index.html's
+   nav, but this line keeps login/register/age/gender/sleep/
+   interests pages in the theme the person last picked, since
+   they all load this same script.js.
+========================================================== */
+(function applyStoredTheme(){
+  const saved = localStorage.getItem("mindmirror-theme");
+  if (saved === "dark"){
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+})();
+
+/* ==========================================================
+   MindMirror — auth page logic
+   ----------------------------------------------------------
    There's still no real backend, so this can't check a real
    password or create a real account. What it does instead:
    on submit, it treats the form as "successful" and sends the
