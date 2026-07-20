@@ -128,6 +128,8 @@
   </div>
   <span class="nav__word">MindMirror</span>
   <div class="nav__links" id="navLinks">
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    <a class="nav__link" href="#breathing">Breathe</a>
     <a class="nav__link" href="#cases">Examples</a>
     <a class="nav__link nav__link--secondary" href="#about">About</a>
     <span class="nav__greeting" id="navGreeting" hidden></span>
@@ -145,6 +147,8 @@
           <span class="panel__label">01 — You write</span>
           <span class="panel__count"><span id="wordCount">0</span> words</span>
         </div>
+
+        <span class="streak-badge" id="streakBadge" hidden>🔥 <span id="streakCount">0</span>-day streak</span>
 
         <p class="mood-picker__label">Quick mood check (optional)</p>
         <div class="mood-picker" id="moodPicker">
@@ -186,6 +190,7 @@
             <span class="btn-analyze__ripple" aria-hidden="true"></span>
           </button>
           <button id="clearBtn" class="btn-clear" type="button">Clear</button>
+          <button id="promptBtn" class="btn-clear" type="button">✨ Give me a prompt</button>
         </div>
       </div>
 
@@ -234,6 +239,31 @@
     <ul class="history__list" id="historyList">
       <li class="history__empty" id="historyEmpty">Nothing saved yet. Analyze an entry above to add it here.</li>
     </ul>
+
+    <div class="mood-chart" id="moodChartWrap">
+      <p class="mood-chart__label">Mood trend — last 7 days</p>
+      <svg class="mood-chart__svg" id="moodChartSvg" viewBox="0 0 700 180" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="mood-chart__axis" id="moodChartAxis"></div>
+    </div>
+
+    <div class="word-cloud" id="wordCloudWrap">
+      <p class="word-cloud__label">Words that show up most in your writing</p>
+      <div class="word-cloud__words" id="wordCloudWords"></div>
+    </div>
+  </section>
+
+  <section class="breathing" id="breathing">
+    <div class="cases__head">
+      <p class="panel__label panel__label--light">Take a moment</p>
+      <h2 class="cases__title">Breathing exercise</h2>
+      <p class="cases__sub">A slow, guided breath — in for 4, hold for 4, out for 4.</p>
+    </div>
+    <div class="breathing__box">
+      <div class="breathing__circle" id="breathingCircle">
+        <span id="breathingText">Start</span>
+      </div>
+      <button type="button" class="btn-analyze" id="breathingToggle">Begin</button>
+    </div>
   </section>
 
   <section class="cases" id="cases">
