@@ -122,7 +122,11 @@ button{ font-family: inherit; }
 .slide--plum{ background: var(--pastel-reflect); color: var(--ink); }
 .slide--amber{ background: var(--pastel-examples); color: var(--ink); }
 .slide--slate{ background: var(--pastel-privacy); color: var(--ink); }
-.slide--ink.slide--cta{ background: var(--bg); }
+.slide--ink.slide--cta{
+  background: var(--bg);
+  flex-direction: column !important;
+  text-align: center;
+}
 
 .slide__content{ max-width: 480px; }
 .slide__eyebrow{
