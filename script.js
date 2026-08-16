@@ -1,21 +1,10 @@
 /* ==========================================================
    MindMirror — frontend logic
 
-   NOTE FOR BACKEND INTEGRATION:
-   Replace the body of `analyzeText()` with a real API call to
-   your NLP service, e.g.:
-
-     async function analyzeText(text) {
-       const res = await fetch("/api/analyze", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ text })
-       });
-       return res.json(); // { mood, note, message, emotions:{joy,sadness,anxiety,anger,calm} }
-     }
-
-   Until then, a small keyword-based scorer runs locally so the
-   UI is fully demoable without a backend.
+   BACKEND CONNECTED: analyzeText() now calls the Flask backend
+   at http://127.0.0.1:5000/api/analyze instead of using the
+   local keyword lexicon. Make sure `python app.py` is running
+   before using the Analyze button.
 ========================================================== */
 
 /* ==========================================================
@@ -67,15 +56,7 @@ const moodWordEl      = document.getElementById("moodWord");
 const moodNoteEl      = document.getElementById("moodNote");
 const messageEl       = document.getElementById("reflectionMessage");
 
-/* ---------- lightweight placeholder lexicon ---------- */
-const LEXICON = {
-  joy:     ["happy","good","glad","great","love","excited","grateful","hope","joy","proud"],
-  sadness: ["sad","down","cry","lonely","lost","tired","empty","hurt","heavy","numb"],
-  anxiety: ["worried","anxious","afraid","panic","nervous","overthink","stress","scared","overwhelmed","racing"],
-  anger:   ["angry","annoyed","furious","irritated","frustrated","mad","resentful"],
-  calm:    ["calm","peace","relaxed","rest","safe","steady","fine","okay","grounded","settled"]
-};
-
+/* ---------- kept only for EMOTION_META / MOOD_COPY display info ---------- */
 const EMOTION_META = {
   joy:     { label: "Joy",     color: "var(--amber)" },
   sadness: { label: "Sadness", color: "var(--slate)" },
@@ -107,9 +88,7 @@ journalInput.addEventListener("input", () => {
    Quick mood check — a manual, single-select tag above the
    textarea. This is INTENTIONALLY separate from analyzeText()
    below: the NLP analysis only ever looks at the written text,
-   never at this selection. It's here so the person can note
-   their mood at a glance; wiring it into a backend later would
-   mean sending `selectedMood` alongside the journal text.
+   never at this selection.
 ========================================================== */
 let selectedMood = null;
 
@@ -132,64 +111,19 @@ let selectedMood = null;
   });
 })();
 
-/* ---------- placeholder analysis ---------- */
-function analyzeText(text){
-  const lower = text.toLowerCase();
-  const scores = {};
-  let total = 0;
-
-  for (const [emotion, words] of Object.entries(LEXICON)){
-    let hits = 0;
-    words.forEach(w => {
-      const re = new RegExp(w, "gi");
-      const matches = lower.match(re);
-      if (matches) hits += matches.length;
-    });
-    scores[emotion] = hits;
-    total += hits;
-  }
-
-  // fallback so the UI never shows a totally flat result on neutral text
-  if (total === 0){
-    scores.calm = 1;
-    total = 1;
-  }
-
-  const percentages = {};
-  for (const emotion in scores){
-    percentages[emotion] = Math.round((scores[emotion] / total) * 100);
-  }
-
-  const sorted = Object.entries(percentages).sort((a,b) => b[1] - a[1]);
-  const [topEmotion, topScore] = sorted[0];
-  const second = sorted[1];
-
-  const isMixed = second && (topScore - second[1] <= 8) && topScore < 45;
-  const moodKey = isMixed ? "mixed" : topEmotion;
-
-  return {
-    emotions: percentages,
-    mood: MOOD_COPY[moodKey].word,
-    note: MOOD_COPY[moodKey].note,
-    message: buildMessage(moodKey, countWords(text))
-  };
-}
-
-function buildMessage(moodKey, wordCount){
-  const length = wordCount < 25
-    ? "You said a lot in just a few words."
-    : "You wrote quite openly — that's a good habit to keep."
-
-  const byMood = {
-    joy:     "This feeling is worth holding onto. It might help to notice what brought it on.",
-    sadness: "Writing the hard stuff down takes courage. Sharing it with someone you trust could help too.",
-    anxiety: "There's a lot circling in your head. Try picking apart one thought at a time.",
-    anger:   "Better out than bottled up. It might help to trace where this feeling started.",
-    calm:    "There's a steadiness in this writing. Worth holding onto, as much as you can.",
-    mixed:   "It's completely normal for several feelings to show up at once."
-  };
-
-  return `${byMood[moodKey]} ${length}`;
+/* ==========================================================
+   Backend-connected analysis
+   ----------------------------------------------------------
+   Sends the journal text to the Flask backend and returns the
+   JSON response: { mood, note, message, emotions:{...} }
+========================================================== */
+async function analyzeText(text){
+  const res = await fetch("http://127.0.0.1:5000/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text })
+  });
+  return res.json();
 }
 
 /* ---------- render ---------- */
@@ -227,7 +161,7 @@ function renderResult(result){
 }
 
 /* ---------- events ---------- */
-analyzeBtn.addEventListener("click", () => {
+analyzeBtn.addEventListener("click", async () => {
   const text = journalInput.value.trim();
   if (!text){
     journalInput.focus();
@@ -239,7 +173,7 @@ analyzeBtn.addEventListener("click", () => {
   analyzeBtn.classList.add("is-rippling");
   setTimeout(() => analyzeBtn.classList.remove("is-rippling"), 650);
 
-  const result = analyzeText(text);
+  const result = await analyzeText(text);
   renderResult(result);
   recordHistoryEntry(text, result);
 });
@@ -407,11 +341,12 @@ initIntentOptions();
 /* ==========================================================
    Guest vs. registered user state
    ----------------------------------------------------------
-   No backend yet, so "logged in" just means the URL has a
+   No backend session yet, so "logged in" just means the URL has a
    ?user=name param (set by auth.js after the login/register
    form is submitted). History is kept in a plain in-memory
-   array — it resets on refresh. Once there's a backend, swap
-   this for a real session + a fetch() to load/save entries.
+   array — it resets on refresh. Once there's a real session,
+   swap this for a fetch() to load/save entries from
+   GET/POST /api/entries.
 ========================================================== */
 
 const params = new URLSearchParams(window.location.search);
