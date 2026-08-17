@@ -13,34 +13,73 @@
   }
 })();
 
-/* ==========================================================
-   MindMirror — auth page logic (BACKEND CONNECTED)
-   ----------------------------------------------------------
-   Login/Register now call the real Flask API:
-     POST /api/login    { email, password }
-     POST /api/register { name, email, password }
-
-   `credentials: "include"` is required so the browser sends/
-   stores the session cookie Flask uses to remember who's
-   logged in (current_user() on the backend reads this cookie).
-
-   On success, the backend returns { name, email } and we
-   continue the same onboarding flow as before (age.html etc),
-   carrying the real name forward.
-
-   On failure (wrong password, duplicate email, etc), the
-   backend returns { message: "..." } with a 4xx status — that
-   message is shown in the <p id="loginNote">/<p id="registerNote">
-   element that already exists in the HTML (just unhidden here).
-========================================================== */
-
 const API_BASE = "http://127.0.0.1:5000";
+
+/* ==========================================================
+   Onboarding draft — age.html, gender.html, sleep.html and
+   interests.html are separate page loads, so a plain JS variable
+   can't survive from one to the next. sessionStorage does (it's
+   cleared when the tab closes, which is fine — we don't need it
+   after the answers are saved to the backend anyway).
+========================================================== */
+const ONBOARDING_KEY = "mindmirror-onboarding-draft";
+
+function getOnboardingDraft(){
+  try {
+    return JSON.parse(sessionStorage.getItem(ONBOARDING_KEY)) || {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveOnboardingDraft(partial){
+  const data = getOnboardingDraft();
+  Object.assign(data, partial);
+  sessionStorage.setItem(ONBOARDING_KEY, JSON.stringify(data));
+}
+
+/* Carries the ?user= name (and any #hash, like #app) from the
+   current page's URL onto the Continue button's target link. */
+function carryUserParam(continueBtn){
+  const params = new URLSearchParams(window.location.search);
+  const userName = params.get("user");
+  if (!userName) return;
+
+  const nextUrl = new URL(continueBtn.href, window.location.href);
+  nextUrl.searchParams.set("user", userName);
+  continueBtn.href = nextUrl.pathname + nextUrl.search + nextUrl.hash;
+}
+
+/* ==========================================================
+   Login / Register (BACKEND CONNECTED)
+   ----------------------------------------------------------
+   POST /api/login    { email, password }
+   POST /api/register { name, email, password }
+
+   `credentials: "include"` sends/stores the session cookie
+   Flask uses to remember who's logged in.
+
+   The backend now also returns `onboarded: true/false` — true
+   if this user already answered age/gender/sleep/interests
+   before. That decides where we send them next:
+     onboarded=true  -> straight into the app (index.html#app)
+     onboarded=false -> the age/gender/sleep/interests flow
+========================================================== */
 
 function showAuthError(noteId, message){
   const note = document.getElementById(noteId);
   if (!note) return;
   note.textContent = message;
   note.hidden = false;
+}
+
+function goToNextStep(result){
+  const name = encodeURIComponent(result.name);
+  if (result.onboarded){
+    window.location.href = "index.html?user=" + name + "#app";
+  } else {
+    window.location.href = "age.html?user=" + name;
+  }
 }
 
 function handleAuthSubmit(formId, endpoint, noteId){
@@ -73,19 +112,18 @@ function handleAuthSubmit(formId, endpoint, noteId){
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // send/receive the session cookie
+        credentials: "include",
         body: JSON.stringify(payload)
       });
 
       const result = await res.json();
 
       if (!res.ok){
-        // Backend sends e.g. { message: "Incorrect email or password." }
         showAuthError(noteId, result.message || "Something went wrong.");
         return;
       }
 
-      window.location.href = "age.html?user=" + encodeURIComponent(result.name);
+      goToNextStep(result);
     } catch (err){
       // Usually means the Flask server isn't running.
       showAuthError(noteId, "Couldn't reach the server. Is the backend running?");
@@ -98,8 +136,9 @@ handleAuthSubmit("registerForm", "/api/register", "registerNote");
 
 /* ==========================================================
    "Continue with Google" — still fake for now (no real Google
-   OAuth wired up). Leaving as-is; the backend has no route for
-   this yet.
+   OAuth wired up, no backend route for it). Always sends the
+   person through the onboarding flow since there's no real
+   account behind it to check an `onboarded` status for.
 ========================================================== */
 
 function handleGoogleButton(buttonId){
@@ -115,16 +154,14 @@ handleGoogleButton("googleLoginBtn");
 handleGoogleButton("googleRegisterBtn");
 
 /* ==========================================================
-   age.html + gender.html — short single-select questions shown
-   right after login/register, one after another: age.html ->
-   gender.html -> index.html. Same pattern as the intent question
-   in the onboarding carousel. Nothing is sent to the backend yet
-   (no route for saving these answers) — each page just carries
-   the ?user= name forward to the next step when Continue is
-   pressed.
+   age.html + gender.html — single-select questions. On Continue,
+   the selected option is saved into the onboarding draft
+   (sessionStorage) before moving to the next page — it isn't
+   sent to the backend yet, that happens all at once at the end
+   of interests.html.
 ========================================================== */
 
-function initQuestionPage(optionsId, backId, continueId){
+function initQuestionPage(optionsId, backId, continueId, fieldKey){
   const optionsWrap = document.getElementById(optionsId);
   const backBtn = document.getElementById(backId);
   const continueBtn = document.getElementById(continueId);
@@ -142,66 +179,103 @@ function initQuestionPage(optionsId, backId, continueId){
     backBtn.addEventListener("click", () => window.history.back());
   }
 
-  // Carry the ?user= name (if any) forward to the next step.
-  const params = new URLSearchParams(window.location.search);
-  const userName = params.get("user");
-  if (userName){
-    const nextUrl = new URL(continueBtn.href, window.location.href);
-    nextUrl.searchParams.set("user", userName);
-    continueBtn.href = nextUrl.pathname + nextUrl.search;
-  }
+  continueBtn.addEventListener("click", () => {
+    const selected = options.find(b => b.classList.contains("is-selected"));
+    if (selected){
+      saveOnboardingDraft({ [fieldKey]: selected.textContent.trim() });
+    }
+  });
+
+  carryUserParam(continueBtn);
 }
 
-initQuestionPage("ageOptions", "ageBack", "ageContinue");
-initQuestionPage("genderOptions", "genderBack", "genderContinue");
+initQuestionPage("ageOptions", "ageBack", "ageContinue", "ageGroup");
+initQuestionPage("genderOptions", "genderBack", "genderContinue", "gender");
 
 /* ==========================================================
-   sleep.html — the merged "wake up / bed time" question.
-   No pill options here (it's two time pickers), so it just
-   needs the back button + carrying ?user= forward to the app.
-   The chosen times aren't sent anywhere yet (no backend route
-   for them).
+   sleep.html — two time pickers instead of pill options. Same
+   idea: save the chosen times into the draft on Continue.
 ========================================================== */
 
-function initSimplePage(backId, continueId){
+function initSleepPage(backId, continueId, wakeId, bedId){
   const backBtn = document.getElementById(backId);
   const continueBtn = document.getElementById(continueId);
+  const wakeInput = document.getElementById(wakeId);
+  const bedInput = document.getElementById(bedId);
   if (!continueBtn) return;
 
   if (backBtn){
     backBtn.addEventListener("click", () => window.history.back());
   }
 
-  const params = new URLSearchParams(window.location.search);
-  const userName = params.get("user");
-  if (userName){
-    const nextUrl = new URL(continueBtn.href, window.location.href);
-    nextUrl.searchParams.set("user", userName);
-    continueBtn.href = nextUrl.pathname + nextUrl.search;
-  }
+  continueBtn.addEventListener("click", () => {
+    saveOnboardingDraft({
+      wakeTime: wakeInput ? wakeInput.value : null,
+      bedTime: bedInput ? bedInput.value : null
+    });
+  });
+
+  carryUserParam(continueBtn);
 }
 
-initSimplePage("sleepBack", "sleepContinue");
+initSleepPage("sleepBack", "sleepContinue", "wakeTime", "bedTime");
 
 /* ==========================================================
-   interests.html — multi-select grid ("choose all that apply").
-   Unlike age/gender (single-select), any number of cards can
-   be active at once. Selections aren't sent anywhere yet (no
-   backend route for them) — Continue just carries ?user=
-   forward as usual.
+   interests.html — multi-select grid, and the LAST onboarding
+   step. On Continue: gather the selected interests, merge them
+   into the draft built up on the previous pages, POST the whole
+   thing to /api/onboarding (this is where it actually gets
+   saved to the database), then navigate to the app.
+
+   preventDefault() + a manual redirect afterward is needed here
+   (unlike the earlier steps) because we have to wait for the
+   save to finish before it's safe to leave the page.
 ========================================================== */
 
 function initInterestsPage(){
   const grid = document.getElementById("interestsGrid");
-  if (!grid) return;
+  const backBtn = document.getElementById("interestsBack");
+  const continueBtn = document.getElementById("interestsContinue");
+  if (!grid || !continueBtn) return;
 
-  grid.querySelectorAll(".interest-card").forEach(card => {
+  const cards = Array.from(grid.querySelectorAll(".interest-card"));
+  cards.forEach(card => {
     card.addEventListener("click", () => {
       card.classList.toggle("is-selected");
     });
   });
 
-  initSimplePage("interestsBack", "interestsContinue");
+  if (backBtn){
+    backBtn.addEventListener("click", () => window.history.back());
+  }
+
+  carryUserParam(continueBtn);
+
+  continueBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    const interests = cards
+      .filter(c => c.classList.contains("is-selected"))
+      .map(c => c.querySelector(".interest-card__label").textContent.trim());
+
+    const draft = getOnboardingDraft();
+    draft.interests = interests;
+
+    try {
+      await fetch(`${API_BASE}/api/onboarding`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(draft)
+      });
+      sessionStorage.removeItem(ONBOARDING_KEY);
+    } catch (err){
+      // Backend unreachable — still let them into the app rather
+      // than getting stuck; the answers just won't be saved.
+    }
+
+    window.location.href = continueBtn.href;
+  });
 }
 
 initInterestsPage();
