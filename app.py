@@ -5,6 +5,8 @@ What this gives you:
   POST /api/register   { name, email, password }  -> creates a user, logs them in
   POST /api/login       { email, password }        -> logs an existing user in
   POST /api/logout                                  -> logs out
+  POST /api/onboarding  { ageGroup, gender, wakeTime, bedTime, interests }
+                                                     -> saves onboarding answers (login required)
   POST /api/analyze     { text }                    -> runs NLP, no login required
   POST /api/entries     { text }                    -> saves a journal entry (login required)
   GET  /api/entries                                  -> returns the logged-in user's history
@@ -14,6 +16,24 @@ Run:
     python app.py
 
 Then it's live at http://127.0.0.1:5000
+
+NOTE ON DATABASE LOCATION: the SQLite file now lives OUTSIDE the project
+folder, at C:/mindmirror-data/mindmirror.db, instead of inside
+MindMirror/instance/. This is deliberate: VS Code's Live Server watches
+every file in the project folder and auto-reloads the browser tab the
+moment any of them change — including the .db file, which changes on
+every journal entry save. Keeping the .db file outside the watched
+folder stops those reloads. Before running for the first time, create
+the folder:
+    mkdir C:\\mindmirror-data
+(Windows will create the .db file itself on first run — you don't need
+to create that part by hand.)
+
+If you already had a mindmirror.db from before this file added the
+onboarding columns to User, DELETE it and restart the server —
+SQLAlchemy's db.create_all() only creates missing TABLES, it doesn't add
+new COLUMNS to a table that already exists. Deleting it is safe since it's
+just local dev/test data.
 """
 
 from flask import Flask, request, jsonify, session
@@ -29,7 +49,11 @@ app = Flask(__name__)
 # CHANGE THIS before deploying anywhere real — this key is what keeps
 # login sessions secure. For local development/demo it's fine as is.
 app.config["SECRET_KEY"] = "change-this-to-something-random-later"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///mindmirror.db"
+
+# Database lives OUTSIDE the project folder on purpose — see the note
+# at the top of this file for why. Make sure C:/mindmirror-data exists
+# before starting the server (create it once with `mkdir C:\mindmirror-data`).
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///C:/mindmirror-data/mindmirror.db"
 db = SQLAlchemy(app)
 
 # Lets the frontend (served separately, e.g. VS Code Live Server on
@@ -46,6 +70,17 @@ class User(db.Model):
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+
+    # Onboarding answers — filled in once via age.html -> gender.html ->
+    # sleep.html -> interests.html, right after registration. All
+    # nullable because a brand-new user hasn't answered them yet; that's
+    # also how we detect whether someone still needs the onboarding flow
+    # (see `onboarded` in the login/register responses below).
+    age_group = db.Column(db.String(40))
+    gender = db.Column(db.String(40))
+    wake_time = db.Column(db.String(10))
+    bed_time = db.Column(db.String(10))
+    interests = db.Column(db.Text)   # comma-separated list, e.g. "Journaling,Meditation"
 
 
 class JournalEntry(db.Model):
@@ -85,7 +120,8 @@ def register():
     db.session.commit()
 
     session["user_id"] = user.id
-    return jsonify({"name": user.name, "email": user.email})
+    # Brand new user -> age_group is definitely still empty -> onboarded=False.
+    return jsonify({"name": user.name, "email": user.email, "onboarded": bool(user.age_group)})
 
 
 @app.route("/api/login", methods=["POST"])
@@ -99,13 +135,36 @@ def login():
         return jsonify({"message": "Incorrect email or password."}), 401
 
     session["user_id"] = user.id
-    return jsonify({"name": user.name, "email": user.email})
+    # If age_group is already set, this user finished onboarding before —
+    # the frontend uses this to skip straight to the app instead of
+    # asking age/gender/sleep/interests again.
+    return jsonify({"name": user.name, "email": user.email, "onboarded": bool(user.age_group)})
 
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
     session.pop("user_id", None)
     return jsonify({"message": "Logged out."})
+
+
+# ---------------- Onboarding answers (login required) ----------------
+
+@app.route("/api/onboarding", methods=["POST"])
+def save_onboarding():
+    user = current_user()
+    if not user:
+        return jsonify({"message": "Please log in first."}), 401
+
+    data = request.get_json() or {}
+    user.age_group = data.get("ageGroup")
+    user.gender = data.get("gender")
+    user.wake_time = data.get("wakeTime")
+    user.bed_time = data.get("bedTime")
+    interests = data.get("interests") or []
+    user.interests = ",".join(interests)
+
+    db.session.commit()
+    return jsonify({"message": "Onboarding saved."})
 
 
 # ---------------- NLP route (works whether logged in or not) ----------------
@@ -142,7 +201,12 @@ def save_entry():
         "id": entry.id,
         "text": entry.text,
         "mood": entry.mood,
-        "created_at": entry.created_at.isoformat(),
+        # Timezone fix: append "Z" so the frontend's `new Date(...)`
+        # parses this as UTC instead of local time. Without it, entries
+        # appeared to be from "yesterday" and the streak counter stayed
+        # stuck at 0 for anyone west of UTC+0 at certain hours (e.g.
+        # Dhaka, UTC+6).
+        "created_at": entry.created_at.isoformat() + "Z",
         "analysis": result
     })
 
@@ -159,7 +223,13 @@ def list_entries():
                .all())
 
     return jsonify([
-        {"id": e.id, "text": e.text, "mood": e.mood, "created_at": e.created_at.isoformat()}
+        {
+            "id": e.id,
+            "text": e.text,
+            "mood": e.mood,
+            # Same "Z" suffix as above, for the same reason.
+            "created_at": e.created_at.isoformat() + "Z",
+        }
         for e in entries
     ])
 
