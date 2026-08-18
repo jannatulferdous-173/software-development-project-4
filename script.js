@@ -114,16 +114,42 @@ let selectedMood = null;
 /* ==========================================================
    Backend-connected analysis
    ----------------------------------------------------------
-   Sends the journal text to the Flask backend and returns the
-   JSON response: { mood, note, message, emotions:{...} }
+   analyzeText() — for guests (not logged in). Runs the NLP
+   analysis but doesn't save anything (matches /api/analyze,
+   which needs no login).
+
+   saveEntry() — for logged-in users. Calls /api/entries, which
+   runs the SAME analysis on the backend AND saves the entry to
+   the database against the logged-in user, in one request.
+   `credentials: "include"` is required here so the browser
+   sends the session cookie — without it the backend won't know
+   who's logged in and will respond 401.
 ========================================================== */
+const API_BASE = "http://127.0.0.1:5000";
+
 async function analyzeText(text){
-  const res = await fetch("http://127.0.0.1:5000/api/analyze", {
+  const res = await fetch(`${API_BASE}/api/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text })
   });
   return res.json();
+}
+
+async function saveEntry(text){
+  const res = await fetch(`${API_BASE}/api/entries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ text })
+  });
+  const data = await res.json();
+  if (!res.ok){
+    // Session likely expired — fall back to an unsaved analysis
+    // instead of leaving the button stuck.
+    return analyzeText(text);
+  }
+  return data.analysis;
 }
 
 /* ---------- render ---------- */
@@ -156,8 +182,78 @@ function renderResult(result){
     });
   });
 
+  renderSuggestions(result);
+  renderProfessionalHelp(result);
+
   emptyState.hidden = true;
   resultState.hidden = false;
+}
+
+/* ==========================================================
+   Suggestions — a short, concrete "what next" list (breathing
+   exercise pointer, a book, an activity/app) returned by the
+   backend per mood. Rendered just under the message, above the
+   disclaimer. The container is created once and reused so
+   repeated analyses don't pile up duplicate elements.
+========================================================== */
+let suggestionsEl = null;
+
+function getSuggestionsEl(){
+  if (suggestionsEl) return suggestionsEl;
+  suggestionsEl = document.createElement("div");
+  suggestionsEl.className = "reflection__suggestions";
+  suggestionsEl.id = "reflectionSuggestions";
+  messageEl.insertAdjacentElement("afterend", suggestionsEl);
+  return suggestionsEl;
+}
+
+function renderSuggestions(result){
+  const el = getSuggestionsEl();
+  const suggestions = result.suggestions || [];
+
+  if (!suggestions.length){
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+
+  el.hidden = false;
+  el.innerHTML = `
+    <p class="reflection__suggestions-label">A few things that might help</p>
+    <ul class="reflection__suggestions-list">
+      ${suggestions.map(s => `<li>${s}</li>`).join("")}
+    </ul>
+  `;
+}
+
+/* ==========================================================
+   Professional-help banner — shown only when the backend flags
+   show_professional_help (moderate/severe negative mood, or the
+   dedicated crisis-language response). Kept visually distinct
+   (warm border, calmer copy) from the suggestions list above it.
+========================================================== */
+let professionalHelpEl = null;
+
+function getProfessionalHelpEl(){
+  if (professionalHelpEl) return professionalHelpEl;
+  professionalHelpEl = document.createElement("div");
+  professionalHelpEl.className = "reflection__professional-help";
+  professionalHelpEl.id = "reflectionProfessionalHelp";
+  getSuggestionsEl().insertAdjacentElement("afterend", professionalHelpEl);
+  return professionalHelpEl;
+}
+
+function renderProfessionalHelp(result){
+  const el = getProfessionalHelpEl();
+
+  if (!result.show_professional_help || !result.professional_message){
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+
+  el.hidden = false;
+  el.innerHTML = `<p>${result.professional_message}</p>`;
 }
 
 /* ---------- events ---------- */
@@ -173,7 +269,7 @@ analyzeBtn.addEventListener("click", async () => {
   analyzeBtn.classList.add("is-rippling");
   setTimeout(() => analyzeBtn.classList.remove("is-rippling"), 650);
 
-  const result = await analyzeText(text);
+  const result = currentUser ? await saveEntry(text) : await analyzeText(text);
   renderResult(result);
   recordHistoryEntry(text, result);
 });
@@ -423,6 +519,36 @@ function applyUserState(){
     navAuthLink.classList.add("nav__link--logout");
   }
   if (historySection) historySection.hidden = false;
+  loadHistoryFromServer();
+}
+
+/* ==========================================================
+   Pulls the real saved entries for this user from the backend
+   (GET /api/entries) and replaces the hardcoded demo history
+   with them before rendering. credentials:"include" sends the
+   session cookie so the backend knows which user is asking.
+========================================================== */
+async function loadHistoryFromServer(){
+  try {
+    const res = await fetch(`${API_BASE}/api/entries`, { credentials: "include" });
+    if (!res.ok){ renderHistory(); return; } // not logged in server-side — show demo data as-is
+    const entries = await res.json();
+
+    journalHistory.length = 0; // clear the demo entries, keep the same array reference
+    entries.forEach(e => {
+      const moodKey = Object.keys(MOOD_COPY).find(key => MOOD_COPY[key].word === e.mood) || "calm";
+      journalHistory.push({
+        fullText: e.text,
+        snippet: e.text.length > 60 ? e.text.slice(0, 60) + "…" : e.text,
+        mood: e.mood,
+        moodKey: moodKey,
+        moodColor: MOOD_COLOR[moodKey] || "var(--slate)",
+        date: new Date(e.created_at)
+      });
+    });
+  } catch (err){
+    // Backend unreachable — fall back to showing the demo data.
+  }
   renderHistory();
 }
 
