@@ -1,0 +1,101 @@
+text,labels
+"I keep worrying something will go wrong before the baby comes, I can barely sleep.",pregnancy_postpartum
+"Since delivery I don't feel like myself, everything feels heavier than it should.",pregnancy_postpartum
+Nobody warned me how lonely the first few months after having a baby would feel.,pregnancy_postpartum;loneliness_isolation
+My in-laws keep commenting on how I'm handling the baby and it's making me anxious.,pregnancy_postpartum;family_relationships
+"I'm scared of the delivery itself, I can't stop thinking about it.",pregnancy_postpartum
+I look in the mirror and just feel disgusted with my own body.,body_image
+People keep commenting on my weight like it's an invitation to give advice.,body_image
+I skipped the family photo again because I hate how I look in pictures.,body_image
+Every time I eat in front of others I feel like they're judging my weight.,body_image
+I compare myself to everyone online and always come up short.,body_image;self_esteem_confidence
+A colleague keeps making comments that make me uncomfortable and I don't know how to report it.,harassment_safety
+Someone followed me home from the station and I still feel shaken.,harassment_safety
+"He won't stop messaging me after I said no, it's starting to scare me.",harassment_safety
+My manager makes jokes about me in meetings that cross a line and no one says anything.,harassment_safety
+"I dread walking past that group every day, they never stop staring and commenting.",harassment_safety
+"My exams start next week and I haven't studied enough, I feel like I'm going to fail.",academic_stress
+I froze during the test and now I can't stop replaying it in my head.,academic_stress
+My parents keep comparing my marks to my cousin's and it's exhausting.,academic_stress;family_relationships
+I've been up all night cramming and I still don't feel ready.,academic_stress
+The results are coming out tomorrow and I feel sick with anxiety.,academic_stress
+I don't know how I'm going to cover rent this month.,financial_stress
+I keep checking my bank balance and it just makes me more anxious.,financial_stress
+The loan payments are piling up and I feel like I can't breathe.,financial_stress
+I had to say no to my kid's school trip because we simply can't afford it.,financial_stress;parenting_challenges
+Losing my job last month has put us in a really tight spot.,financial_stress
+"I get home from work and there's still dinner, homework, and laundry waiting for me.",work_life_balance
+I feel guilty leaving for work every morning while my child cries at the door.,work_life_balance;parenting_challenges
+By the time I finish work calls it's already my son's bedtime and I missed the whole evening.,work_life_balance;parenting_challenges
+I haven't had a weekend to myself in months between the job and the house.,work_life_balance
+"I keep saying yes to extra shifts because we need the money, but I'm running on empty.",work_life_balance;financial_stress
+My mother still treats me like a child even though I'm thirty.,family_relationships
+Every family dinner turns into an argument about my choices.,family_relationships
+I feel like I'm always the one keeping the peace in this family.,family_relationships
+My siblings and I barely talk unless something's wrong.,family_relationships
+My in-laws expect me to do everything the way they did and it's suffocating.,family_relationships
+"My son won't talk to me when I get home, he just goes straight to his room.",parenting_challenges
+I don't know why my daughter has started pulling away from all of us lately.,parenting_challenges
+"He used to run up and hug me after work, now he barely looks up.",parenting_challenges
+I try to ask my child about their day and get one-word answers or silence.,parenting_challenges
+Balancing teaching all day and coming home to a child who shuts me out is breaking me.,parenting_challenges;work_life_balance
+"I feel invisible in this house, like no one notices when I'm struggling.",loneliness_isolation
+I haven't had a real conversation with anyone in days.,loneliness_isolation
+"My partner and I barely talk anymore, we just coexist.",relationship_marital
+We keep having the same fight about money and neither of us backs down.,relationship_marital;financial_stress
+I don't feel heard in this relationship anymore.,relationship_marital
+I got a small win at work today and it actually felt good.,general_other
+"Today was calm, nothing major happened and I'm grateful for that.",general_other
+I finally finished a book I'd been putting off for months.,general_other
+Took a short walk this evening and it helped clear my head a bit.,general_other
+I keep imagining complications during pregnancy and it makes it hard to relax.,pregnancy_postpartum
+"After having the baby, I feel overwhelmed by how different my days have become.",pregnancy_postpartum
+I wake up during the night worrying that I am not doing enough for my newborn.,pregnancy_postpartum
+I feel distant from my partner since the baby arrived and I don't know how to reconnect.,pregnancy_postpartum;relationship_marital
+"My relatives keep giving me unwanted advice about feeding the baby, and I feel judged.",pregnancy_postpartum;family_relationships
+"I barely get a moment alone since becoming a parent, and I miss having time for myself.",pregnancy_postpartum;loneliness_isolation
+My body has changed so much that I avoid looking at myself in the mirror.,body_image
+I feel embarrassed whenever clothes fit differently than they used to.,body_image
+Photos of myself make me focus on every part of my appearance I dislike.,body_image
+I avoid going to the beach because I am uncomfortable with how my body looks.,body_image
+Seeing edited pictures online makes me feel worse about my own appearance.,body_image;self_esteem_confidence
+I have started doubting myself because I never seem to feel attractive enough.,body_image;self_esteem_confidence
+A coworker keeps making personal remarks about me even after I asked them to stop.,harassment_safety
+I feel unsafe because someone from my neighborhood keeps waiting near my usual route.,harassment_safety
+A stranger keeps sending unwanted messages to my phone and ignores my requests to stop.,harassment_safety
+"My supervisor repeatedly humiliates me in front of the team, and I don't know what to do.",harassment_safety
+"Those students keep mocking me whenever I walk by, and I have started avoiding the area.",harassment_safety
+I have several assignments due at once and I cannot figure out how to manage them.,academic_stress
+"I studied for days but the exam questions were unfamiliar, and now I feel defeated.",academic_stress
+My family keeps asking why my grades are not as high as my sibling's.,academic_stress;family_relationships
+I cannot concentrate on my coursework because I keep worrying about the upcoming deadline.,academic_stress
+Waiting for my scholarship decision is making it difficult to focus on my classes.,academic_stress;financial_stress
+The cost of groceries has gone up and I am struggling to make my budget work.,financial_stress
+I keep postponing bills because there is never enough money left at the end of the month.,financial_stress
+Unexpected medical expenses have made our monthly finances much harder to manage.,financial_stress
+I had to reduce activities for my child because our household budget is too tight.,financial_stress;parenting_challenges
+"I am taking extra freelance work to cover expenses, but it leaves me exhausted.",work_life_balance;financial_stress
+My commute takes so long that I have almost no energy left for my family.,work_life_balance
+"Work emails keep arriving late at night, and I feel like I am never truly off duty.",work_life_balance
+I keep missing important family moments because my work schedule changes at the last minute.,work_life_balance;parenting_challenges
+"I need the overtime pay, but working so many hours is leaving me drained.",work_life_balance;financial_stress
+My father dismisses my decisions and insists he knows what is best for me.,family_relationships
+I avoid calling home because conversations with my relatives usually become tense.,family_relationships
+"My family expects me to solve everyone's problems, and I am getting overwhelmed.",family_relationships
+"My brother and I used to be close, but now every conversation feels awkward.",family_relationships
+"My child gets frustrated over small things, and I am struggling to respond calmly.",parenting_challenges
+I worry that I am not giving my daughter enough attention after school.,parenting_challenges
+"My teenager refuses to discuss what is bothering them, and I feel helpless.",parenting_challenges
+I am struggling to set boundaries with my child without turning every evening into an argument.,parenting_challenges
+I spend most days around people but still feel like nobody really knows how I am doing.,loneliness_isolation
+I have been withdrawing from friends and now I hardly hear from anyone.,loneliness_isolation
+"My partner and I discuss chores more than anything else, and the closeness between us feels gone.",relationship_marital
+"We disagree about how much to spend, and money arguments are becoming a regular part of our relationship.",relationship_marital;financial_stress
+I feel like my partner listens to respond rather than to understand me.,relationship_marital
+I keep replaying a difficult conversation with my spouse and wondering how it got this far.,relationship_marital
+I had a productive day and felt proud of finally making progress on something important.,general_other
+I spent some quiet time listening to music and it lifted my mood.,general_other
+"I cooked a meal I had never tried before, and it turned out better than expected.",general_other
+"A friend checked in on me today, and that small gesture made me smile.",general_other
+I finished a task I had been avoiding and felt relieved afterward.,general_other
+I took some time away from my phone tonight and enjoyed the quiet.,general_other
