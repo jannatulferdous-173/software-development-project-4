@@ -124,6 +124,7 @@ button{ font-family: inherit; }
 .slide--slate{ background: var(--pastel-privacy); color: var(--ink); }
 .slide--ink.slide--cta{
   background: var(--bg);
+  color: rgb(var(--ink-rgb));
   flex-direction: column !important;
   text-align: center;
 }
@@ -171,7 +172,7 @@ button{ font-family: inherit; }
   padding: 0;
   gap: 0;
   background: var(--bg);
-  color: var(--ink);
+  color: rgb(var(--ink-rgb));
   text-align: center;
 }
 .cover-media{
@@ -194,7 +195,7 @@ button{ font-family: inherit; }
 .slide__account-link{
   margin-top: .9rem;
   font-size: .85rem;
-  color: var(--ink);
+  color: rgb(var(--ink-rgb));
   opacity: .6;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -215,7 +216,7 @@ button{ font-family: inherit; }
    Kept in the same lavender family as everything else. --- */
 .slide--intent{
   background: var(--bg);
-  color: var(--ink);
+  color: rgb(var(--ink-rgb));
   overflow-y: auto;
   padding-top: clamp(2rem,6vh,3rem);
   padding-bottom: clamp(2rem,6vh,3rem);
@@ -609,6 +610,12 @@ button{ font-family: inherit; }
   margin: .7rem 0 0;
   width: fit-content;
 }
+/* FIX: `[hidden]` (a boolean attribute JS toggles) needs to win over
+   the `display:inline-flex` above, or the badge never actually hides
+   when the streak is 0. Author-stylesheet rules beat the browser's
+   built-in `[hidden]{ display:none }` rule at equal specificity, so
+   this override has to be declared explicitly. */
+.streak-badge[hidden]{ display: none; }
 
 /* --- quick mood check: single-select grid of 8 pastel moods,
    optional and separate from the NLP text analysis below --- */
@@ -747,6 +754,12 @@ button{ font-family: inherit; }
 }
 
 .reflection__result{ display:flex; flex-direction:column; }
+/* FIX: same issue and same fix as .streak-badge above. Without this,
+   `resultState.hidden = false/true` in script.js had no visible
+   effect — the result block (mood word, emotion bars, message) was
+   always rendered, just visually stacked under the empty-state
+   placeholder, which is why "reflection never seemed to update". */
+.reflection__result[hidden]{ display: none; }
 
 .mood-headline{
   display:flex; flex-direction:column; gap:.15rem;
@@ -807,6 +820,62 @@ button{ font-family: inherit; }
   padding-top: 1rem;
   border-top: 1px dashed var(--line);
 }
+
+/* --- suggestions list: concrete next-steps (breathing prompt, a
+   book, an activity) returned per-mood by the backend --- */
+.reflection__suggestions{
+  margin: 0 0 1.2rem;
+}
+.reflection__suggestions-label{
+  font-family: var(--mono);
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .55;
+  margin: 0 0 .6rem;
+}
+.reflection__suggestions-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+.reflection__suggestions-list li{
+  font-size: .88rem;
+  line-height: 1.55;
+  color: rgba(247,241,228,.82);
+  background: rgba(247,241,228,.04);
+  border-radius: 8px;
+  padding: .6rem .8rem;
+  padding-left: 1.6rem;
+  position: relative;
+}
+.reflection__suggestions-list li::before{
+  content: "✦";
+  position: absolute;
+  left: .7rem;
+  top: .6rem;
+  color: var(--amber);
+  font-size: .75rem;
+}
+
+/* --- professional-help banner: shown only when the backend flags
+   show_professional_help (moderate/severe negative mood, or the
+   crisis-language response). Warmer/rust-toned so it reads as
+   "important" without feeling alarming. --- */
+.reflection__professional-help{
+  font-size: .9rem;
+  line-height: 1.6;
+  color: rgba(247,241,228,.92);
+  background: rgba(181,101,79,.14);
+  border: 1px solid rgba(181,101,79,.4);
+  border-radius: 10px;
+  padding: .9rem 1.1rem;
+  margin: 0 0 1.2rem;
+}
+.reflection__professional-help p{ margin: 0; }
 
 /* ---------------- Case studies ---------------- */
 .cases{
