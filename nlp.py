@@ -5,26 +5,50 @@ Uses VADER (Valence Aware Dictionary and sEntiment Reasoner) for overall
 positive/negative/neutral valence, PLUS a keyword layer to (a) figure out
 WHICH negative emotion(s) are present and (b) blend them proportionally
 instead of dumping the whole negative score into a single "winner"
-category. That's what makes results like "Mixed" more accurate — if a
-piece of writing has both anxiety and sadness cues, both bars move
-instead of one emotion swallowing the whole score.
+category.
 
-On top of the emotion breakdown, this file now also:
+On top of the emotion breakdown, this file also:
   - classifies a rough SEVERITY for negative moods (mild / moderate /
     severe), based on how strongly negative VADER's compound score is
-  - returns richer, more actionable advice per mood: a short message,
-    plus 2-4 concrete suggestions (breathing/journaling prompts, a
-    well-known book, a calming activity/app)
+  - returns richer, more actionable advice: a short message, plus a
+    list of STRUCTURED suggestions — each one typed so the frontend can
+    render it appropriately:
+        {"type": "tip",   "text": "..."}
+        {"type": "book",  "title": "...", "author": "...", "cover_url": "..."}
+        {"type": "game",  "title": "...", "cover_url": "..."}
+        {"type": "video", "title": "...", "url": "..."}
   - flags when the message should nudge toward professional support,
-    and includes a verified Bangladesh helpline (Kaan Pete Roi) for
-    that nudge
+    and includes "call_actions" — a list of {"label", "tel"} pairs the
+    frontend renders as tappable call buttons (tel: links)
   - checks first for language suggesting active crisis / self-harm
-    intent, and if found, skips all mood-scoring and returns a direct,
-    supportive message pointing to crisis resources
+    intent, and separately for harassment/safety language (via
+    situations.py), and routes those to dedicated responses instead of
+    the normal mood pipeline
+
+BOOK COVERS: fetched live from Open Library's public cover API
+(covers.openlibrary.org) using each book's ISBN-13. This is a stable,
+intended-for-this-purpose public service — no images are stored in
+this repo. If an ISBN is ever slightly wrong, Open Library serves a
+blank placeholder rather than an error, and the frontend also treats a
+failed image load as "hide the image, keep the caption" so a bad ID
+never shows a broken-image icon.
+
+GAME COVERS: fetched live from Steam's public CDN using each game's
+Steam app ID (verified against the game's real store page).
+
+VIDEO LINKS: rather than pointing to one specific YouTube video (which
+can be deleted, region-locked, or just wrong), these link to a YouTube
+SEARCH results page for a specific query — always valid, and surfaces
+real, current videos on the topic. Where a channel is verified real
+(Dr. Tracey Marks, a practicing psychiatrist with a well-known mental
+health YouTube channel), her name is included in the query so her
+videos surface near the top.
 
 Install:
     pip install vaderSentiment
 """
+
+from urllib.parse import quote as _urlquote
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -32,12 +56,46 @@ from situations import detect_situations
 
 analyzer = SentimentIntensityAnalyzer()
 
+
+# ---------------------------------------------------------------------
+# Small helpers for building structured suggestion entries.
+# ---------------------------------------------------------------------
+def _tip(text):
+    return {"type": "tip", "text": text}
+
+
+def _book(title, author, isbn13):
+    return {
+        "type": "book",
+        "title": title,
+        "author": author,
+        "cover_url": f"https://covers.openlibrary.org/b/isbn/{isbn13}-M.jpg",
+    }
+
+
+def _game(title, steam_appid):
+    return {
+        "type": "game",
+        "title": title,
+        "cover_url": f"https://cdn.akamai.steamstatic.com/steam/apps/{steam_appid}/header.jpg",
+    }
+
+
+def _video(title, search_query):
+    return {
+        "type": "video",
+        "title": title,
+        "url": f"https://www.youtube.com/results?search_query={_urlquote(search_query)}",
+    }
+
+
+CALL_KAAN_PETE_ROI = {"label": "Call Kaan Pete Roi — 09612-119911", "tel": "+8809612119911"}
+CALL_999 = {"label": "Call 999 (Emergency)", "tel": "999"}
+
 # ---------------------------------------------------------------------
 # Crisis-language check — runs BEFORE any mood scoring. If any of these
-# phrases show up, we skip straight to a direct, supportive response
-# with helpline info instead of trying to label an "emotion".
-# Keep this list to clear, unambiguous phrases only (avoid single common
-# words that would false-positive on ordinary journal entries).
+# phrases show up, we skip straight to a direct, supportive message
+# with tappable call buttons instead of trying to label an "emotion".
 # ---------------------------------------------------------------------
 CRISIS_PHRASES = [
     "kill myself", "killing myself", "end my life", "ending my life",
@@ -59,23 +117,21 @@ CRISIS_RESPONSE = {
     "severity": "severe",
     "show_professional_help": True,
     "professional_message": (
-        "In Bangladesh, Kaan Pete Roi offers free, confidential emotional "
-        "support every day from 3 PM to 3 AM: 09612-119911. "
-        "For an immediate emergency, call the national emergency service: 999."
+        "If you're in immediate danger, call 999 right now. Kaan Pete Roi "
+        "also offers free, confidential emotional support every day from "
+        "3 PM to 3 AM."
     ),
+    "call_actions": [CALL_999, CALL_KAAN_PETE_ROI],
     "suggestions": [],
     "situations": [],
 }
 
 # ---------------------------------------------------------------------
 # Safety response — used when situations.py detects "harassment_safety"
-# (via its keyword rules, its ML backup, or both). This is DELIBERATELY
-# separate from the emotion pipeline below: text like "a boy is
-# harassing me every day" is not really describing an emotion to be
-# labeled (VADER just sees generic negativity and, with no
-# "sad"/"anxious"/etc keyword present, used to default to plain
-# sadness) — it's describing something happening TO the person that
-# needs safety-specific next steps, not a book recommendation.
+# (via keyword rules, ML backup, or both). Kept separate from the
+# emotion pipeline: this is describing something happening TO the
+# person, not a feeling to label — it needs safety-specific next
+# steps, not a book recommendation.
 # ---------------------------------------------------------------------
 SAFETY_RESPONSE = {
     "mood": "Unsettled",
@@ -90,64 +146,22 @@ SAFETY_RESPONSE = {
     "professional_message": (
         "If you're in immediate danger, call 999. Otherwise, telling a "
         "trusted adult, teacher, or authority figure is a strong first step — "
-        "Kaan Pete Roi (09612-119911, daily 3 PM–3 AM) can also help you "
-        "think through what to do next, confidentially."
+        "Kaan Pete Roi can also help you think through what to do next, "
+        "confidentially."
     ),
+    "call_actions": [CALL_999, CALL_KAAN_PETE_ROI],
     "suggestions": [
-        "Write down what happened, with dates and times — this makes it easier to report later, and to be believed.",
-        "Tell someone you trust in person — a parent, teacher, or friend — even just saying it out loud is a step.",
-        "If it's happening online, use the platform's block and report tools; keep screenshots as evidence.",
-        "You are not overreacting, and this is not your fault.",
+        _tip("Write down what happened, with dates and times — this makes it easier to report later, and to be believed."),
+        _tip("Tell someone you trust in person — a parent, teacher, or friend — even just saying it out loud is a step."),
+        _tip("If it's happening online, use the platform's block and report tools; keep screenshots as evidence."),
+        _tip("You are not overreacting, and this is not your fault."),
+        _video("How to report harassment or bullying safely", "how to report harassment or bullying safely"),
     ],
     "situations": [{"category": "harassment_safety", "confidence": 1.0, "source": "safety_response"}],
 }
 
-# ---------------------------------------------------------------------
-# Extra, situation-specific tips layered ON TOP OF the mood-based
-# SUGGESTIONS below when situations.py detects one of these topics.
-# Kept short (1-2 each) since they're appended, not a replacement.
-# harassment_safety isn't here — it's handled entirely by
-# SAFETY_RESPONSE above instead.
-# ---------------------------------------------------------------------
-SITUATION_SUGGESTIONS = {
-    "pregnancy_postpartum": [
-        "What you're feeling is common and has a name — perinatal/postpartum anxiety and mood changes are well-recognized and treatable; it's worth mentioning to your doctor or midwife at your next visit.",
-    ],
-    "body_image": [
-        "Try limiting time on accounts/apps that make comparison worse — a small, low-effort boundary that adds up.",
-        "Book: \"The Body Is Not an Apology\" by Sonya Renee Taylor.",
-    ],
-    "self_esteem_confidence": [
-        "Try keeping a short running list of things you did well, however small — it's easy to only remember the misses.",
-    ],
-    "academic_stress": [
-        "Try breaking the workload into the next single task only, not the whole exam or deadline at once.",
-    ],
-    "financial_stress": [
-        "If it's available, a free financial counseling service or even a trusted elder's advice can help make a plan feel less overwhelming.",
-    ],
-    "work_life_balance": [
-        "Try picking one fixed boundary this week (e.g. no work messages after a set time) rather than trying to fix everything at once.",
-    ],
-    "family_relationships": [
-        "It can help to decide in advance which topics you're willing to discuss with certain relatives, and which you'll gently redirect.",
-    ],
-    "parenting_challenges": [
-        "Kids pulling away is often about needing space, not about you — a low-pressure shared activity (no deep talk required) can rebuild connection over time.",
-    ],
-    "loneliness_isolation": [
-        "Even one small, low-stakes reach-out (a text, not a big conversation) can start to chip away at this.",
-    ],
-    "relationship_marital": [
-        "Book: \"Nonviolent Communication\" by Marshall Rosenberg — useful for conversations that keep going in circles.",
-    ],
-}
-
 # Used to tell apart WHICH negative emotion(s) are present once VADER
-# has already decided the text leans negative overall. A word can only
-# live in one category, but a sentence can (and often does) hit words
-# from more than one — that's what lets the blend below produce a real
-# "Mixed" result instead of always picking one winner.
+# has already decided the text leans negative overall.
 EMOTION_KEYWORDS = {
     "anxiety": [
         "worried", "anxious", "afraid", "panic", "nervous", "overthink",
@@ -176,7 +190,6 @@ MOOD_COPY = {
     "mixed":   {"word": "Mixed",     "note": "A few different feelings are showing up together."},
 }
 
-# Base one-line message per mood — always shown.
 MESSAGES = {
     "joy":     "This feeling is worth holding onto. It might help to notice what brought it on.",
     "sadness": "Writing the hard stuff down takes courage. You don't have to carry it alone.",
@@ -186,50 +199,97 @@ MESSAGES = {
     "mixed":   "It's completely normal for several feelings to show up at once.",
 }
 
-# Concrete, low-effort suggestions per mood: a mix of an in-app action,
-# a widely-known book, and an activity/app — not medical advice, just
-# gentle next steps. Keep book picks to well-known, broadly-recommended
-# titles rather than anything hyper-specific to one condition.
+# Structured suggestions per mood. cover_url values are fetched live at
+# render time from Open Library / Steam (see module docstring).
 SUGGESTIONS = {
     "joy": [
-        "Write down exactly what led to this feeling — it's a useful map for the next hard day.",
-        "Book: \"The Book of Joy\" by the Dalai Lama and Desmond Tutu.",
-        "Share this moment with someone — good feelings tend to grow when they're shared.",
+        _tip("Write down exactly what led to this feeling — it's a useful map for the next hard day."),
+        _book("The Book of Joy", "Dalai Lama & Desmond Tutu", "9780399185045"),
+        _tip("Share this moment with someone — good feelings tend to grow when they're shared."),
     ],
     "calm": [
-        "Try the breathing exercise on this page to stretch this feeling a little longer.",
-        "Book: \"The Untethered Soul\" by Michael A. Singer.",
-        "A short, unhurried walk tends to pair well with this kind of headspace.",
+        _tip("Try the breathing exercise on this page to stretch this feeling a little longer."),
+        _book("The Untethered Soul", "Michael A. Singer", "9781572245372"),
+        _tip("A short, unhurried walk tends to pair well with this kind of headspace."),
     ],
     "anxiety": [
-        "Try the 4-4-4 breathing exercise below — it's built for exactly this.",
-        "Write down the single most worrying thought, then one small next step for it — just one.",
-        "Book: \"Feeling Good\" by David D. Burns, or the app Headspace for guided calm-downs.",
-        "If racing thoughts are frequent, a mental health professional can teach tools that help long-term.",
+        _tip("Try the 4-4-4 breathing exercise below — it's built for exactly this."),
+        _tip("Write down the single most worrying thought, then one small next step for it — just one."),
+        _book("Feeling Good", "David D. Burns", "9780380810332"),
+        _game("Stardew Valley", "413150"),
+        _video("Psychiatrist explains anxiety — Dr. Tracey Marks", "Dr Tracey Marks anxiety"),
     ],
     "sadness": [
-        "Try naming one small thing that felt even slightly okay today — no pressure to feel better.",
-        "Book: \"Man's Search for Meaning\" by Viktor Frankl.",
-        "A gentle, low-stakes game (something like Stardew Valley or a puzzle app) can help without demanding much energy.",
-        "If this heaviness sticks around for more than a couple of weeks, talking to a mental health professional is a good next step.",
+        _tip("Try naming one small thing that felt even slightly okay today — no pressure to feel better."),
+        _book("Man's Search for Meaning", "Viktor Frankl", "9780807014295"),
+        _game("Journey", "638230"),
+        _video("Psychiatrist explains low mood — Dr. Tracey Marks", "Dr Tracey Marks depression low mood"),
     ],
     "anger": [
-        "Try writing the unfiltered version of what you'd want to say — then decide what's worth actually saying.",
-        "Book: \"Rewire Your Anxious Brain\" (covers anger's overlap with stress too), or \"Nonviolent Communication\" by Marshall Rosenberg.",
-        "Physical movement — even 10 minutes — tends to metabolize this feeling faster than sitting with it.",
+        _tip("Try writing the unfiltered version of what you'd want to say — then decide what's worth actually saying."),
+        _book("Nonviolent Communication", "Marshall B. Rosenberg", "9781892005549"),
+        _tip("Physical movement — even 10 minutes — tends to metabolize this feeling faster than sitting with it."),
+        _video("Managing anger, explained by a psychiatrist", "psychiatrist explains anger management"),
     ],
     "mixed": [
-        "Try journaling each feeling separately, one at a time, instead of all at once — it can untangle things.",
-        "Book: \"Atlas of the Heart\" by Brené Brown, great for naming mixed or hard-to-place feelings.",
-        "The breathing exercise below can help settle things enough to think clearly.",
+        _tip("Try journaling each feeling separately, one at a time, instead of all at once — it can untangle things."),
+        _book("Atlas of the Heart", "Brené Brown", "9780399592555"),
+        _tip("The breathing exercise below can help settle things enough to think clearly."),
+        _video("Understanding mixed or hard-to-name feelings", "psychiatrist explains mixed emotions"),
+    ],
+}
+
+# Extra, situation-specific suggestions layered ON TOP OF the mood-based
+# SUGGESTIONS above when situations.py detects one of these topics.
+# harassment_safety isn't here — it's handled entirely by SAFETY_RESPONSE.
+SITUATION_SUGGESTIONS = {
+    "pregnancy_postpartum": [
+        _tip("What you're feeling is common and has a name — perinatal/postpartum mood changes are well-recognized and treatable; it's worth mentioning to your doctor or midwife."),
+        _video("Postpartum depression & anxiety, explained", "postpartum depression anxiety psychiatrist explains"),
+    ],
+    "body_image": [
+        _tip("Try limiting time on accounts/apps that make comparison worse — a small, low-effort boundary that adds up."),
+        _book("The Body Is Not an Apology", "Sonya Renee Taylor", "9781626568517"),
+    ],
+    "self_esteem_confidence": [
+        _tip("Try keeping a short running list of things you did well, however small — it's easy to only remember the misses."),
+        _video("Building self-esteem — a psychologist's approach", "psychologist self esteem confidence building"),
+    ],
+    "academic_stress": [
+        _tip("Try breaking the workload into the next single task only, not the whole exam or deadline at once."),
+        _video("Managing exam stress, a psychiatrist's take", "psychiatrist exam stress anxiety tips"),
+    ],
+    "financial_stress": [
+        _tip("If it's available, a free financial counseling service or a trusted elder's advice can help make a plan feel less overwhelming."),
+        _video("Coping with financial stress and anxiety", "psychiatrist financial stress anxiety coping"),
+    ],
+    "work_life_balance": [
+        _tip("Try picking one fixed boundary this week (e.g. no work messages after a set time) rather than trying to fix everything at once."),
+        _video("Burnout, explained by a psychiatrist", "psychiatrist burnout work life balance"),
+    ],
+    "family_relationships": [
+        _tip("It can help to decide in advance which topics you're willing to discuss with certain relatives, and which you'll gently redirect."),
+        _video("Difficult family relationships — a therapist's perspective", "therapist difficult family relationships boundaries"),
+    ],
+    "parenting_challenges": [
+        _tip("Kids pulling away is often about needing space, not about you — a low-pressure shared activity (no deep talk required) can rebuild connection over time."),
+        _video("When your child pulls away — a psychologist's view", "child psychologist child pulling away parenting"),
+    ],
+    "loneliness_isolation": [
+        _tip("Even one small, low-stakes reach-out (a text, not a big conversation) can start to chip away at this."),
+        _video("Understanding loneliness, explained by a psychiatrist", "psychiatrist loneliness isolation explains"),
+    ],
+    "relationship_marital": [
+        _book("Nonviolent Communication", "Marshall B. Rosenberg", "9781892005549"),
+        _video("Communication in relationships — Nonviolent Communication", "nonviolent communication relationship conflict explained"),
     ],
 }
 
 PROFESSIONAL_HELP_MESSAGE = (
     "If this feeling has been sticking around for a while, or feels like more than "
     "you can carry on your own, it's worth talking to a mental health professional. "
-    "In Bangladesh, Kaan Pete Roi offers free, confidential emotional support every "
-    "day from 3 PM to 3 AM: 09612-119911."
+    "Kaan Pete Roi offers free, confidential emotional support every day from "
+    "3 PM to 3 AM."
 )
 
 
@@ -255,7 +315,7 @@ def analyze_text(text):
     """Main entry point. Takes raw journal text, returns a dict:
         {
           mood, note, message, emotions,
-          severity, show_professional_help, professional_message,
+          severity, show_professional_help, professional_message, call_actions,
           suggestions, situations
         }
     """
@@ -283,8 +343,6 @@ def analyze_text(text):
     if compound >= 0.4:
         mood_key = "joy"
     elif compound <= -0.4:
-        # pick whichever negative emotion has the most keyword hits;
-        # falls back to sadness if nothing specific was detected
         mood_key = max(keyword_counts, key=keyword_counts.get) if total_keyword_hits > 0 else "sadness"
     elif -0.15 <= compound <= 0.15:
         mood_key = "calm"
@@ -292,12 +350,9 @@ def analyze_text(text):
         mood_key = "mixed"
 
     # ---- build the emotion breakdown (bars in the UI) ----
-    # Instead of handing the whole negative score to one "winner"
-    # category, split it proportionally across every negative emotion
-    # that actually showed up in the text.
     emotions = {"joy": 0, "sadness": 0, "anxiety": 0, "anger": 0, "calm": 0}
     emotions["joy"] = scores["pos"] * 100
-    emotions["calm"] = scores["neu"] * 40  # scaled down so neutral doesn't dominate every result
+    emotions["calm"] = scores["neu"] * 40
 
     if scores["neg"] > 0:
         if total_keyword_hits > 0:
@@ -305,7 +360,6 @@ def analyze_text(text):
                 share = keyword_counts[emotion] / total_keyword_hits
                 emotions[emotion] = scores["neg"] * 100 * share
         else:
-            # negative tone with no specific keyword cues — default to sadness
             emotions["sadness"] = scores["neg"] * 100
 
     total = sum(emotions.values()) or 1
@@ -315,6 +369,10 @@ def analyze_text(text):
     is_negative_mood = mood_key in ("sadness", "anxiety", "anger") or (mood_key == "mixed" and compound < 0)
     severity = _severity(compound) if is_negative_mood else "none"
     show_professional_help = is_negative_mood and severity in ("moderate", "severe")
+
+    call_actions = []
+    if show_professional_help:
+        call_actions = [CALL_999, CALL_KAAN_PETE_ROI] if severity == "severe" else [CALL_KAAN_PETE_ROI]
 
     # ---- suggestions: mood-based, plus any matched situation's extra tips ----
     suggestions = list(SUGGESTIONS[mood_key])
@@ -330,6 +388,7 @@ def analyze_text(text):
         "severity": severity,
         "show_professional_help": show_professional_help,
         "professional_message": PROFESSIONAL_HELP_MESSAGE if show_professional_help else "",
+        "call_actions": call_actions,
         "suggestions": suggestions,
         "situations": detected_situations,
     }
