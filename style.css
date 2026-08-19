@@ -821,8 +821,9 @@ button{ font-family: inherit; }
   border-top: 1px dashed var(--line);
 }
 
-/* --- suggestions list: concrete next-steps (breathing prompt, a
-   book, an activity) returned per-mood by the backend --- */
+/* --- suggestions list: concrete next-steps. Each entry can be a
+   plain tip, a book (with cover image), a game (with cover image),
+   or a video (linking out to a YouTube search). --- */
 .reflection__suggestions{
   margin: 0 0 1.2rem;
 }
@@ -842,18 +843,23 @@ button{ font-family: inherit; }
   flex-direction: column;
   gap: .55rem;
 }
-.reflection__suggestions-list li{
+
+.suggestion-card{
+  border-radius: 10px;
+  background: rgba(247,241,228,.04);
+  overflow: hidden;
+}
+
+/* tip: plain text row, matches the old style */
+.suggestion-card--tip{
   font-size: .88rem;
   line-height: 1.55;
   color: rgba(247,241,228,.82);
-  background: rgba(247,241,228,.04);
-  border-radius: 8px;
   padding: .6rem .8rem;
   padding-left: 1.6rem;
   position: relative;
 }
-.reflection__suggestions-list li::before{
-  content: "✦";
+.suggestion-card__tip-mark{
   position: absolute;
   left: .7rem;
   top: .6rem;
@@ -861,10 +867,80 @@ button{ font-family: inherit; }
   font-size: .75rem;
 }
 
+/* book / game: cover image + caption, side by side */
+.suggestion-card--book,
+.suggestion-card--game{
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .6rem .8rem;
+}
+.suggestion-card__cover{
+  width: 44px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: rgba(247,241,228,.08);
+  flex-shrink: 0;
+}
+.suggestion-card--game .suggestion-card__cover{
+  width: 84px;
+  height: 39px;
+  border-radius: 6px;
+}
+.suggestion-card--no-image .suggestion-card__cover{ display: none; }
+.suggestion-card__text{
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+}
+.suggestion-card__kicker{
+  font-family: var(--mono);
+  font-size: .64rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--amber);
+  opacity: .85;
+}
+.suggestion-card__title{
+  font-size: .9rem;
+  color: rgba(247,241,228,.92);
+  line-height: 1.35;
+}
+.suggestion-card__meta{
+  font-size: .78rem;
+  color: rgba(247,241,228,.6);
+}
+
+/* video: whole card is a link */
+.suggestion-card--video{ padding: 0; }
+.suggestion-card__video-link{
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .6rem .8rem;
+  text-decoration: none;
+  transition: background .2s var(--ease);
+}
+.suggestion-card__video-link:hover{ background: rgba(247,241,228,.06); }
+.suggestion-card__play{
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--rust);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .7rem;
+}
+
 /* --- professional-help banner: shown only when the backend flags
    show_professional_help (moderate/severe negative mood, or the
-   crisis-language response). Warmer/rust-toned so it reads as
-   "important" without feeling alarming. --- */
+   crisis-language / safety response). Warmer/rust-toned so it reads
+   as "important" without feeling alarming. --- */
 .reflection__professional-help{
   font-size: .9rem;
   line-height: 1.6;
@@ -875,7 +951,31 @@ button{ font-family: inherit; }
   padding: .9rem 1.1rem;
   margin: 0 0 1.2rem;
 }
-.reflection__professional-help p{ margin: 0; }
+.reflection__professional-help p{ margin: 0 0 .8rem; }
+.reflection__professional-help p:last-child{ margin-bottom: 0; }
+
+/* --- tappable call buttons: tel: links, e.g. "Call 999",
+   "Call Kaan Pete Roi". Dial directly on mobile. --- */
+.call-action-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+.call-action-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  text-decoration: none;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--rust);
+  padding: .55rem 1rem;
+  border-radius: 100px;
+  transition: transform .2s var(--ease), background .2s var(--ease);
+}
+.call-action-btn:hover{ transform: translateY(-1px); background: #a5563f; }
+.call-action-btn__icon{ font-size: .85rem; }
 
 /* ---------------- Case studies ---------------- */
 .cases{
