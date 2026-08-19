@@ -218,19 +218,64 @@ function renderSuggestions(result){
   }
 
   el.hidden = false;
+
+  const itemsHtml = suggestions.map(s => {
+    if (s.type === "book"){
+      return `
+        <li class="suggestion-card suggestion-card--book">
+          <img src="${s.cover_url}" alt="${s.title} cover" class="suggestion-card__cover"
+               onerror="this.style.display='none'; this.closest('.suggestion-card').classList.add('suggestion-card--no-image')">
+          <div class="suggestion-card__text">
+            <span class="suggestion-card__kicker">Book</span>
+            <span class="suggestion-card__title">${s.title}</span>
+            <span class="suggestion-card__meta">${s.author}</span>
+          </div>
+        </li>
+      `;
+    }
+    if (s.type === "game"){
+      return `
+        <li class="suggestion-card suggestion-card--game">
+          <img src="${s.cover_url}" alt="${s.title} cover" class="suggestion-card__cover"
+               onerror="this.style.display='none'; this.closest('.suggestion-card').classList.add('suggestion-card--no-image')">
+          <div class="suggestion-card__text">
+            <span class="suggestion-card__kicker">A gentle game</span>
+            <span class="suggestion-card__title">${s.title}</span>
+          </div>
+        </li>
+      `;
+    }
+    if (s.type === "video"){
+      return `
+        <li class="suggestion-card suggestion-card--video">
+          <a href="${s.url}" target="_blank" rel="noopener noreferrer" class="suggestion-card__video-link">
+            <span class="suggestion-card__play" aria-hidden="true">▶</span>
+            <div class="suggestion-card__text">
+              <span class="suggestion-card__kicker">Watch on YouTube</span>
+              <span class="suggestion-card__title">${s.title}</span>
+            </div>
+          </a>
+        </li>
+      `;
+    }
+    // default: plain tip
+    return `<li class="suggestion-card suggestion-card--tip"><span class="suggestion-card__tip-mark" aria-hidden="true">✦</span><span>${s.text}</span></li>`;
+  }).join("");
+
   el.innerHTML = `
     <p class="reflection__suggestions-label">A few things that might help</p>
-    <ul class="reflection__suggestions-list">
-      ${suggestions.map(s => `<li>${s}</li>`).join("")}
-    </ul>
+    <ul class="reflection__suggestions-list">${itemsHtml}</ul>
   `;
 }
 
 /* ==========================================================
    Professional-help banner — shown only when the backend flags
    show_professional_help (moderate/severe negative mood, or the
-   dedicated crisis-language response). Kept visually distinct
-   (warm border, calmer copy) from the suggestions list above it.
+   dedicated crisis/safety responses). Includes tappable call
+   buttons (tel: links) when the backend provides call_actions,
+   e.g. "Call 999" or "Call Kaan Pete Roi" — tapping dials
+   directly on mobile, or opens the system's call-handler on
+   desktop.
 ========================================================== */
 let professionalHelpEl = null;
 
@@ -252,8 +297,19 @@ function renderProfessionalHelp(result){
     return;
   }
 
+  const callActions = result.call_actions || [];
+  const buttonsHtml = callActions.map(action => `
+    <a class="call-action-btn" href="tel:${action.tel}">
+      <span class="call-action-btn__icon" aria-hidden="true">☎</span>
+      ${action.label}
+    </a>
+  `).join("");
+
   el.hidden = false;
-  el.innerHTML = `<p>${result.professional_message}</p>`;
+  el.innerHTML = `
+    <p>${result.professional_message}</p>
+    ${buttonsHtml ? `<div class="call-action-row">${buttonsHtml}</div>` : ""}
+  `;
 }
 
 /* ---------- events ---------- */
