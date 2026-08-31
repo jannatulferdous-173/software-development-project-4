@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -132,6 +132,7 @@
     <a class="nav__link" href="#breathing">Breathe</a>
     <a class="nav__link" href="#cases">Examples</a>
     <a class="nav__link nav__link--secondary" href="#about">About</a>
+    <a class="nav__link" href="profile.html" id="navProfileLink" hidden>Profile</a>
     <span class="nav__greeting" id="navGreeting" hidden></span>
     <a class="nav__link nav__link--cta" href="login.html" id="navAuthLink">Log in</a>
   </div>
@@ -187,6 +188,7 @@
         <div class="panel__foot">
           <button id="analyzeBtn" class="btn-analyze" type="button">
             <span class="btn-analyze__text">Show my reflection</span>
+            <span class="btn-analyze__spinner" aria-hidden="true"></span>
             <span class="btn-analyze__ripple" aria-hidden="true"></span>
           </button>
           <button id="clearBtn" class="btn-clear" type="button">Clear</button>
@@ -204,6 +206,7 @@
           </div>
           <p class="panel__label">02 — Reflection</p>
           <p class="reflection__empty-text">Once you submit your writing, the tone, feeling, and shape of your words will show up here.</p>
+          <p class="reflection__loading-text">Reflecting on your words...</p>
         </div>
 
         <div class="reflection__result" id="resultState" hidden>
@@ -302,6 +305,6 @@
 </footer>
 
 <script src="cases-data.js"></script>
-<script src="script.js"></script>
+<script src="script.js?v=2"></script>
 </body>
 </html>
