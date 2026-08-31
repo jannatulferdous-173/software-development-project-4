@@ -57,13 +57,37 @@ const moodNoteEl      = document.getElementById("moodNote");
 const messageEl       = document.getElementById("reflectionMessage");
 
 /* ---------- kept only for EMOTION_META / MOOD_COPY display info ---------- */
+/* NOTE (2026-08-29): nlp.py now surfaces the Hugging Face model's full
+   7-category breakdown (joy/sadness/anxiety/anger/calm PLUS disgust/
+   surprise) instead of always collapsing down to 5 fixed bars, and it
+   only includes categories that actually have a nonzero score for a
+   given entry. "disgust" and "surprise" are added here so those bars
+   render correctly instead of crashing renderResult() (see the
+   FALLBACK_EMOTION_META note below for what happens if the backend
+   ever adds a category this file doesn't know about yet). */
 const EMOTION_META = {
-  joy:     { label: "Joy",     color: "var(--amber)" },
-  sadness: { label: "Sadness", color: "var(--slate)" },
-  anxiety: { label: "Anxiety", color: "var(--plum)"  },
-  anger:   { label: "Anger",   color: "var(--rust)"   },
-  calm:    { label: "Calm",    color: "var(--moss)"  }
+  joy:      { label: "Joy",      color: "var(--amber)" },
+  sadness:  { label: "Sadness",  color: "var(--slate)" },
+  anxiety:  { label: "Anxiety",  color: "var(--plum)"  },
+  anger:    { label: "Anger",    color: "var(--rust)"   },
+  calm:     { label: "Calm",     color: "var(--moss)"  },
+  disgust:  { label: "Disgust",  color: "var(--rust)"  },
+  surprise: { label: "Surprise", color: "var(--amber)" }
 };
+
+/* Defensive fallback: if the backend ever sends an emotion key this
+   file doesn't have a label/color for yet (e.g. a future new category
+   added to nlp.py without updating this list), renderResult() used to
+   crash outright on `meta.label` — which silently left the UI stuck
+   on the "Once you submit..." placeholder with no visible error. This
+   makes an unknown key degrade gracefully (title-cased label, a
+   neutral color) instead of breaking the whole render. */
+function getEmotionMeta(key){
+  return EMOTION_META[key] || {
+    label: key.charAt(0).toUpperCase() + key.slice(1),
+    color: "var(--slate)"
+  };
+}
 
 const MOOD_COPY = {
   joy:     { word: "Bright",   note: "There's a clear thread of positivity in the writing." },
@@ -124,6 +148,17 @@ let selectedMood = null;
    `credentials: "include"` is required here so the browser
    sends the session cookie — without it the backend won't know
    who's logged in and will respond 401.
+
+   NOTE (2026-08-29): both now check `res.ok` and throw a clear
+   Error if the backend responded with a non-2xx status (e.g. a
+   500 from an unhandled exception, or a 400 from bad input).
+   Previously a failed request would still call res.json() on
+   whatever error page/body came back, which either threw an
+   opaque "Unexpected token" SyntaxError or produced a malformed
+   result object — either way, the UI was left silently stuck on
+   the "Once you submit..." placeholder with no explanation. Now
+   analyzeBtn's click handler (further down) catches this and
+   shows a message instead.
 ========================================================== */
 const API_BASE = "http://127.0.0.1:5000";
 
@@ -133,6 +168,11 @@ async function analyzeText(text){
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text })
   });
+  if (!res.ok){
+    let detail = "";
+    try { detail = (await res.json()).message || ""; } catch (e) { /* body wasn't JSON */ }
+    throw new Error(detail || `Analysis failed (HTTP ${res.status}).`);
+  }
   return res.json();
 }
 
@@ -143,12 +183,17 @@ async function saveEntry(text){
     credentials: "include",
     body: JSON.stringify({ text })
   });
-  const data = await res.json();
   if (!res.ok){
-    // Session likely expired — fall back to an unsaved analysis
-    // instead of leaving the button stuck.
-    return analyzeText(text);
+    if (res.status === 401){
+      // Session likely expired — fall back to an unsaved analysis
+      // instead of leaving the button stuck.
+      return analyzeText(text);
+    }
+    let detail = "";
+    try { detail = (await res.json()).message || ""; } catch (e) { /* body wasn't JSON */ }
+    throw new Error(detail || `Saving your entry failed (HTTP ${res.status}).`);
   }
+  const data = await res.json();
   return data.analysis;
 }
 
@@ -162,7 +207,7 @@ function renderResult(result){
   const ordered = Object.entries(result.emotions).sort((a,b) => b[1]-a[1]);
 
   ordered.forEach(([key, value]) => {
-    const meta = EMOTION_META[key];
+    const meta = getEmotionMeta(key);
     const li = document.createElement("li");
     li.className = "emotion-bar";
     li.innerHTML = `
@@ -187,6 +232,38 @@ function renderResult(result){
 
   emptyState.hidden = true;
   resultState.hidden = false;
+}
+
+/* ==========================================================
+   Error state — shown in place of the reflection panel when
+   analysis fails outright (backend down, network error, 500,
+   etc), so the person sees SOMETHING instead of the UI just
+   sitting on the "Once you submit..." placeholder forever with
+   no explanation. Reuses the same panel area as the empty
+   state.
+========================================================== */
+function renderAnalysisError(err){
+  console.error("MindMirror analysis failed:", err);
+  emptyState.hidden = true;
+  resultState.hidden = true;
+
+  let errorEl = document.getElementById("reflectionError");
+  if (!errorEl){
+    errorEl = document.createElement("div");
+    errorEl.id = "reflectionError";
+    errorEl.className = "reflection__error";
+    resultState.insertAdjacentElement("afterend", errorEl);
+  }
+  errorEl.hidden = false;
+  errorEl.innerHTML = `
+    <p><strong>Something went wrong analyzing that entry.</strong></p>
+    <p>${(err && err.message) ? err.message : "Please make sure the backend server (python app.py) is running, then try again."}</p>
+  `;
+}
+
+function clearAnalysisError(){
+  const errorEl = document.getElementById("reflectionError");
+  if (errorEl) errorEl.hidden = true;
 }
 
 /* ==========================================================
@@ -325,9 +402,26 @@ analyzeBtn.addEventListener("click", async () => {
   analyzeBtn.classList.add("is-rippling");
   setTimeout(() => analyzeBtn.classList.remove("is-rippling"), 650);
 
-  const result = currentUser ? await saveEntry(text) : await analyzeText(text);
-  renderResult(result);
-  recordHistoryEntry(text, result);
+  // Loading state: disables the button and swaps the empty-state
+  // panel's copy/pulse speed (see style.css .is-loading rules) while
+  // the request is in flight, so waiting for a response looks and
+  // feels different from the neutral "nothing submitted yet" state.
+  analyzeBtn.classList.add("is-loading");
+  analyzeBtn.disabled = true;
+  emptyState.classList.add("is-loading");
+
+  clearAnalysisError();
+  try {
+    const result = currentUser ? await saveEntry(text) : await analyzeText(text);
+    renderResult(result);
+    recordHistoryEntry(text, result);
+  } catch (err){
+    renderAnalysisError(err);
+  } finally {
+    analyzeBtn.classList.remove("is-loading");
+    analyzeBtn.disabled = false;
+    emptyState.classList.remove("is-loading");
+  }
 });
 
 clearBtn.addEventListener("click", () => {
@@ -335,6 +429,14 @@ clearBtn.addEventListener("click", () => {
   wordCountEl.textContent = "0";
   emptyState.hidden = false;
   resultState.hidden = true;
+  clearAnalysisError();
+  // Defensive: if a request was still in flight when Clear was
+  // pressed, don't leave the button/panel stuck showing "loading"
+  // forever — the in-flight request's own result will just be
+  // ignored when/if it eventually resolves.
+  analyzeBtn.classList.remove("is-loading");
+  analyzeBtn.disabled = false;
+  emptyState.classList.remove("is-loading");
   journalInput.focus();
 });
 
@@ -557,6 +659,7 @@ const journalHistory = [
 
 const navGreeting  = document.getElementById("navGreeting");
 const navAuthLink  = document.getElementById("navAuthLink");
+const navProfileLink = document.getElementById("navProfileLink");
 const historySection = document.getElementById("historySection");
 const historyList     = document.getElementById("historyList");
 const historyEmpty    = document.getElementById("historyEmpty");
@@ -573,6 +676,11 @@ function applyUserState(){
     navAuthLink.href = "index.html";
     navAuthLink.classList.remove("nav__link--cta");
     navAuthLink.classList.add("nav__link--logout");
+  }
+  // Reveal the Profile nav link (hidden by default in index.html) —
+  // only shown once we know someone is actually logged in.
+  if (navProfileLink){
+    navProfileLink.hidden = false;
   }
   if (historySection) historySection.hidden = false;
   loadHistoryFromServer();
@@ -625,7 +733,7 @@ function recordHistoryEntry(text, result){
     snippet: text.length > 60 ? text.slice(0, 60) + "…" : text,
     mood: result.mood,
     moodKey: moodKey,
-    moodColor: (EMOTION_META[topEmotionKey] && EMOTION_META[topEmotionKey].color) || "var(--slate)",
+    moodColor: getEmotionMeta(topEmotionKey).color,
     date: new Date()
   });
 
