@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your profile — MindMirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="profile-page">
+
+<header class="nav">
+  <a href="index.html" class="profile-brand">
+    <div class="nav__mark" aria-hidden="true">
+      <span class="mark mark--a"></span><span class="mark mark--b"></span>
+    </div>
+    <span class="nav__word">MindMirror</span>
+  </a>
+  <div class="nav__links">
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+    <a class="nav__link" href="index.html#app">Journal</a>
+    <button type="button" class="nav__link nav__link--logout profile-logout" id="profileLogout">Log out</button>
+  </div>
+</header>
+
+<main>
+  <section class="profile">
+
+    <div class="profile__intro">
+      <p class="profile__eyebrow">Your space</p>
+      <h1 class="profile__title">Your profile</h1>
+      <p class="profile__sub">A quick look at you, and everything you've written so far.</p>
+    </div>
+
+    <div class="profile-loading" id="profileLoading">Loading your profile…</div>
+
+    <div class="profile-error" id="profileError" hidden>
+      You need to be logged in to see this page. <a href="login.html">Log in</a>
+    </div>
+
+    <div id="profileContent" hidden>
+
+      <div class="profile-card">
+        <div class="profile-user">
+          <div class="profile-avatar" id="profileAvatar">?</div>
+          <div>
+            <h2 id="profileName">—</h2>
+            <p id="profileEmail">—</p>
+          </div>
+        </div>
+
+        <div class="profile-details">
+          <div class="profile-detail">
+            <span class="profile-detail__label">AGE GROUP</span>
+            <span class="profile-detail__value" id="profileAge">—</span>
+          </div>
+          <div class="profile-detail">
+            <span class="profile-detail__label">GENDER</span>
+            <span class="profile-detail__value" id="profileGender">—</span>
+          </div>
+          <div class="profile-detail">
+            <span class="profile-detail__label">WAKE TIME</span>
+            <span class="profile-detail__value" id="profileWake">—</span>
+          </div>
+          <div class="profile-detail">
+            <span class="profile-detail__label">BED TIME</span>
+            <span class="profile-detail__value" id="profileBed">—</span>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <p class="profile-section__label">Interests</p>
+          <div class="profile-interests" id="profileInterests">
+            <span class="profile-muted" id="profileInterestsEmpty">Nothing picked yet.</span>
+          </div>
+        </div>
+
+        <div class="profile-stat">
+          <span class="profile-stat__number" id="profileEntryCount">0</span>
+          <span class="profile-stat__label">journal entries<br><span id="profileMemberSince"></span></span>
+        </div>
+      </div>
+
+      <div class="profile-history">
+        <div class="profile-history__head">
+          <h2>Mood trend — last 7 days</h2>
+        </div>
+        <div id="profileTrendChart"></div>
+
+        <div class="profile-history__head" style="margin-top:2.4rem;">
+          <h2>Journal history</h2>
+          <a href="index.html#app" class="profile-button">Write today's entry</a>
+        </div>
+
+        <div class="profile-history__list" id="profileHistoryList"></div>
+
+        <div class="profile-empty" id="profileEmptyState" hidden>
+          <div class="profile-empty__mark">✎</div>
+          <h3>Nothing written yet</h3>
+          <p>Once you save a journal entry, it'll show up here — along with your mood trend over time.</p>
+          <a href="index.html#app" class="profile-button">Start writing</a>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+</main>
+
+<script src="mood-trend.js"></script>
+<script src="profile.js"></script>
+</body>
+</html>
