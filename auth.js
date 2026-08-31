@@ -1,281 +1,904 @@
 /* ==========================================================
-   MindMirror — auth page logic
-   ----------------------------------------------------------
-   Theme note: the actual toggle button only lives in index.html's
-   nav, but this line keeps login/register/age/gender/sleep/
-   interests pages in the theme the person last picked, since
-   they all load this same script.js.
+   MindMirror — auth.js
 ========================================================== */
-(function applyStoredTheme(){
+
+const API_BASE = "http://127.0.0.1:5000";
+
+const ONBOARDING_KEY = "mindmirror-onboarding-draft";
+
+/* ==========================================================
+   THEME
+========================================================== */
+
+(function applyStoredTheme() {
   const saved = localStorage.getItem("mindmirror-theme");
-  if (saved === "dark"){
+
+  if (saved === "dark") {
     document.documentElement.setAttribute("data-theme", "dark");
   }
 })();
 
-const API_BASE = "http://127.0.0.1:5000";
 
 /* ==========================================================
-   Onboarding draft — age.html, gender.html, sleep.html and
-   interests.html are separate page loads, so a plain JS variable
-   can't survive from one to the next. sessionStorage does (it's
-   cleared when the tab closes, which is fine — we don't need it
-   after the answers are saved to the backend anyway).
+   ONBOARDING DRAFT
 ========================================================== */
-const ONBOARDING_KEY = "mindmirror-onboarding-draft";
 
-function getOnboardingDraft(){
+function getOnboardingDraft() {
   try {
-    return JSON.parse(sessionStorage.getItem(ONBOARDING_KEY)) || {};
-  } catch (err) {
+    return JSON.parse(
+      sessionStorage.getItem(ONBOARDING_KEY)
+    ) || {};
+  } catch (error) {
     return {};
   }
 }
 
-function saveOnboardingDraft(partial){
-  const data = getOnboardingDraft();
-  Object.assign(data, partial);
-  sessionStorage.setItem(ONBOARDING_KEY, JSON.stringify(data));
+
+function saveOnboardingDraft(partialData) {
+
+  const currentData = getOnboardingDraft();
+
+  Object.assign(currentData, partialData);
+
+  sessionStorage.setItem(
+    ONBOARDING_KEY,
+    JSON.stringify(currentData)
+  );
 }
 
-/* Carries the ?user= name (and any #hash, like #app) from the
-   current page's URL onto the Continue button's target link. */
-function carryUserParam(continueBtn){
-  const params = new URLSearchParams(window.location.search);
-  const userName = params.get("user");
-  if (!userName) return;
-
-  const nextUrl = new URL(continueBtn.href, window.location.href);
-  nextUrl.searchParams.set("user", userName);
-  continueBtn.href = nextUrl.pathname + nextUrl.search + nextUrl.hash;
-}
 
 /* ==========================================================
-   Login / Register (BACKEND CONNECTED)
-   ----------------------------------------------------------
-   POST /api/login    { email, password }
-   POST /api/register { name, email, password }
-
-   `credentials: "include"` sends/stores the session cookie
-   Flask uses to remember who's logged in.
-
-   The backend now also returns `onboarded: true/false` — true
-   if this user already answered age/gender/sleep/interests
-   before. That decides where we send them next:
-     onboarded=true  -> straight into the app (index.html#app)
-     onboarded=false -> the age/gender/sleep/interests flow
+   USER PARAMETER
 ========================================================== */
 
-function showAuthError(noteId, message){
-  const note = document.getElementById(noteId);
+function carryUserParam(button) {
+
+  if (!button) return;
+
+  const params = new URLSearchParams(
+    window.location.search
+  );
+
+  const user = params.get("user");
+
+  if (!user) return;
+
+  const nextURL = new URL(
+    button.href,
+    window.location.href
+  );
+
+  nextURL.searchParams.set("user", user);
+
+  button.href =
+    nextURL.pathname +
+    nextURL.search +
+    nextURL.hash;
+}
+
+
+/* ==========================================================
+   GOOGLE LOGIN
+========================================================== */
+
+const GOOGLE_CLIENT_ID =
+  "273728656708-4airnra74qebgsnp6oknuedo72qq85hd.apps.googleusercontent.com";
+
+
+function initGoogleSignIn() {
+
+  if (
+    !window.google ||
+    !window.google.accounts
+  ) {
+    return;
+  }
+
+  const loginButton =
+    document.getElementById("googleLoginBtn");
+
+  const registerButton =
+    document.getElementById("googleRegisterBtn");
+
+
+  if (!loginButton && !registerButton) {
+    return;
+  }
+
+
+  google.accounts.id.initialize({
+
+    client_id: GOOGLE_CLIENT_ID,
+
+    callback: handleGoogleCredentialResponse
+
+  });
+
+
+  if (loginButton) {
+
+    google.accounts.id.renderButton(
+      loginButton,
+      {
+        theme: "outline",
+        size: "large",
+        width: 320,
+        text: "continue_with"
+      }
+    );
+
+  }
+
+
+  if (registerButton) {
+
+    google.accounts.id.renderButton(
+      registerButton,
+      {
+        theme: "outline",
+        size: "large",
+        width: 320,
+        text: "continue_with"
+      }
+    );
+
+  }
+
+}
+
+
+async function handleGoogleCredentialResponse(response) {
+
+  try {
+
+    const res = await fetch(
+      `${API_BASE}/api/auth/google`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        credentials: "include",
+
+        body: JSON.stringify({
+          credential: response.credential
+        })
+      }
+    );
+
+
+    const data = await res.json();
+
+
+    if (!res.ok) {
+
+      alert(
+        data.message ||
+        "Google login failed."
+      );
+
+      return;
+    }
+
+
+    goToNextStep(data);
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "Could not reach the server."
+    );
+
+  }
+
+}
+
+
+/* Wait for Google script */
+
+function waitForGoogleAndInit() {
+
+  if (
+    window.google &&
+    window.google.accounts
+  ) {
+
+    initGoogleSignIn();
+
+  } else {
+
+    setTimeout(
+      waitForGoogleAndInit,
+      100
+    );
+
+  }
+
+}
+
+
+/* ==========================================================
+   AUTH ERROR
+========================================================== */
+
+function showAuthError(
+  noteId,
+  message
+) {
+
+  const note =
+    document.getElementById(noteId);
+
   if (!note) return;
+
   note.textContent = message;
+
   note.hidden = false;
 }
 
-function goToNextStep(result){
-  const name = encodeURIComponent(result.name);
-  if (result.onboarded){
-    window.location.href = "index.html?user=" + name + "#app";
+
+/* ==========================================================
+   AFTER LOGIN / REGISTER
+========================================================== */
+
+function goToNextStep(result) {
+
+  const name =
+    encodeURIComponent(
+      result.name || ""
+    );
+
+
+  if (result.onboarded) {
+
+    window.location.href =
+      "index.html?user=" +
+      name +
+      "#app";
+
   } else {
-    window.location.href = "age.html?user=" + name;
+
+    window.location.href =
+      "age.html?user=" +
+      name;
+
   }
+
 }
 
-function handleAuthSubmit(formId, endpoint, noteId){
-  const form = document.getElementById(formId);
+
+/* ==========================================================
+   LOGIN / REGISTER FORM
+========================================================== */
+
+function handleAuthSubmit(
+  formId,
+  endpoint,
+  noteId
+) {
+
+  const form =
+    document.getElementById(formId);
+
   if (!form) return;
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
 
-    const note = document.getElementById(noteId);
-    if (note) note.hidden = true; // clear any previous error
+  form.addEventListener(
+    "submit",
+    async function (event) {
 
-    const data = new FormData(form);
-    const payload = {
-      name: (data.get("name") || "").toString().trim(),
-      email: (data.get("email") || "").toString().trim(),
-      password: (data.get("password") || "").toString()
-    };
+      event.preventDefault();
 
-    // Register-only client-side check before even calling the backend.
-    if (formId === "registerForm"){
-      const confirmPassword = (data.get("confirmPassword") || "").toString();
-      if (payload.password !== confirmPassword){
-        showAuthError(noteId, "Passwords don't match.");
-        return;
-      }
-    }
 
-    try {
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload)
-      });
+      const note =
+        document.getElementById(noteId);
 
-      const result = await res.json();
-
-      if (!res.ok){
-        showAuthError(noteId, result.message || "Something went wrong.");
-        return;
+      if (note) {
+        note.hidden = true;
       }
 
-      goToNextStep(result);
-    } catch (err){
-      // Usually means the Flask server isn't running.
-      showAuthError(noteId, "Couldn't reach the server. Is the backend running?");
+
+      const formData =
+        new FormData(form);
+
+
+      const payload = {
+
+        name:
+          (formData.get("name") || "")
+            .toString()
+            .trim(),
+
+        email:
+          (formData.get("email") || "")
+            .toString()
+            .trim(),
+
+        password:
+          (formData.get("password") || "")
+            .toString()
+
+      };
+
+
+      /* Register password confirmation */
+
+      if (formId === "registerForm") {
+
+        const confirmPassword =
+          (
+            formData.get(
+              "confirmPassword"
+            ) || ""
+          ).toString();
+
+
+        if (
+          payload.password !==
+          confirmPassword
+        ) {
+
+          showAuthError(
+            noteId,
+            "Passwords don't match."
+          );
+
+          return;
+        }
+
+      }
+
+
+      try {
+
+        const res =
+          await fetch(
+            `${API_BASE}${endpoint}`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+
+              credentials: "include",
+
+              body:
+                JSON.stringify(payload)
+            }
+          );
+
+
+        const result =
+          await res.json();
+
+
+        if (!res.ok) {
+
+          showAuthError(
+            noteId,
+            result.message ||
+              "Something went wrong."
+          );
+
+          return;
+        }
+
+
+        goToNextStep(result);
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        showAuthError(
+          noteId,
+          "Couldn't reach the server. Is the backend running?"
+        );
+
+      }
+
     }
-  });
+  );
+
 }
 
-handleAuthSubmit("loginForm", "/api/login", "loginNote");
-handleAuthSubmit("registerForm", "/api/register", "registerNote");
+
+/* Initialize login */
+
+handleAuthSubmit(
+  "loginForm",
+  "/api/login",
+  "loginNote"
+);
+
+
+/* Initialize register */
+
+handleAuthSubmit(
+  "registerForm",
+  "/api/register",
+  "registerNote"
+);
+
 
 /* ==========================================================
-   "Continue with Google" — still fake for now (no real Google
-   OAuth wired up, no backend route for it). Always sends the
-   person through the onboarding flow since there's no real
-   account behind it to check an `onboarded` status for.
+   AGE + GENDER
 ========================================================== */
 
-function handleGoogleButton(buttonId){
-  const btn = document.getElementById(buttonId);
-  if (!btn) return;
+function initQuestionPage(
+  optionsId,
+  backId,
+  continueId,
+  fieldKey
+) {
 
-  btn.addEventListener("click", () => {
-    window.location.href = "age.html?user=" + encodeURIComponent("Google user");
-  });
-}
+  const optionsWrap =
+    document.getElementById(optionsId);
 
-handleGoogleButton("googleLoginBtn");
-handleGoogleButton("googleRegisterBtn");
+  const backButton =
+    document.getElementById(backId);
 
-/* ==========================================================
-   age.html + gender.html — single-select questions. On Continue,
-   the selected option is saved into the onboarding draft
-   (sessionStorage) before moving to the next page — it isn't
-   sent to the backend yet, that happens all at once at the end
-   of interests.html.
-========================================================== */
+  const continueButton =
+    document.getElementById(continueId);
 
-function initQuestionPage(optionsId, backId, continueId, fieldKey){
-  const optionsWrap = document.getElementById(optionsId);
-  const backBtn = document.getElementById(backId);
-  const continueBtn = document.getElementById(continueId);
-  if (!optionsWrap || !continueBtn) return;
 
-  const options = Array.from(optionsWrap.querySelectorAll(".intent-option"));
-  options.forEach(btn => {
-    btn.addEventListener("click", () => {
-      options.forEach(b => b.classList.remove("is-selected"));
-      btn.classList.add("is-selected");
-    });
-  });
-
-  if (backBtn){
-    backBtn.addEventListener("click", () => window.history.back());
+  if (
+    !optionsWrap ||
+    !continueButton
+  ) {
+    return;
   }
 
-  continueBtn.addEventListener("click", () => {
-    const selected = options.find(b => b.classList.contains("is-selected"));
-    if (selected){
-      saveOnboardingDraft({ [fieldKey]: selected.textContent.trim() });
+
+  const options =
+    Array.from(
+      optionsWrap.querySelectorAll(
+        ".intent-option"
+      )
+    );
+
+
+  /* Select option */
+
+  options.forEach(
+    function (button) {
+
+      button.addEventListener(
+        "click",
+        function () {
+
+          options.forEach(
+            function (item) {
+
+              item.classList.remove(
+                "is-selected"
+              );
+
+            }
+          );
+
+
+          button.classList.add(
+            "is-selected"
+          );
+
+        }
+      );
+
     }
-  });
+  );
 
-  carryUserParam(continueBtn);
-}
 
-initQuestionPage("ageOptions", "ageBack", "ageContinue", "ageGroup");
-initQuestionPage("genderOptions", "genderBack", "genderContinue", "gender");
+  /* Back */
 
-/* ==========================================================
-   sleep.html — two time pickers instead of pill options. Same
-   idea: save the chosen times into the draft on Continue.
-========================================================== */
+  if (backButton) {
 
-function initSleepPage(backId, continueId, wakeId, bedId){
-  const backBtn = document.getElementById(backId);
-  const continueBtn = document.getElementById(continueId);
-  const wakeInput = document.getElementById(wakeId);
-  const bedInput = document.getElementById(bedId);
-  if (!continueBtn) return;
+    backButton.addEventListener(
+      "click",
+      function () {
 
-  if (backBtn){
-    backBtn.addEventListener("click", () => window.history.back());
+        window.history.back();
+
+      }
+    );
+
   }
 
-  continueBtn.addEventListener("click", () => {
-    saveOnboardingDraft({
-      wakeTime: wakeInput ? wakeInput.value : null,
-      bedTime: bedInput ? bedInput.value : null
-    });
-  });
 
-  carryUserParam(continueBtn);
+  /* Continue */
+
+  continueButton.addEventListener(
+    "click",
+    function () {
+
+      const selected =
+        options.find(
+          function (button) {
+
+            return button.classList.contains(
+              "is-selected"
+            );
+
+          }
+        );
+
+
+      if (selected) {
+
+        saveOnboardingDraft({
+
+          [fieldKey]:
+            selected.textContent.trim()
+
+        });
+
+      }
+
+    }
+  );
+
+
+  carryUserParam(
+    continueButton
+  );
+
 }
 
-initSleepPage("sleepBack", "sleepContinue", "wakeTime", "bedTime");
+
+/* AGE */
+
+initQuestionPage(
+  "ageOptions",
+  "ageBack",
+  "ageContinue",
+  "ageGroup"
+);
+
+
+/* GENDER */
+
+initQuestionPage(
+  "genderOptions",
+  "genderBack",
+  "genderContinue",
+  "gender"
+);
+
 
 /* ==========================================================
-   interests.html — multi-select grid, and the LAST onboarding
-   step. On Continue: gather the selected interests, merge them
-   into the draft built up on the previous pages, POST the whole
-   thing to /api/onboarding (this is where it actually gets
-   saved to the database), then navigate to the app.
-
-   preventDefault() + a manual redirect afterward is needed here
-   (unlike the earlier steps) because we have to wait for the
-   save to finish before it's safe to leave the page.
+   SLEEP
 ========================================================== */
 
-function initInterestsPage(){
-  const grid = document.getElementById("interestsGrid");
-  const backBtn = document.getElementById("interestsBack");
-  const continueBtn = document.getElementById("interestsContinue");
-  if (!grid || !continueBtn) return;
+function initSleepPage() {
 
-  const cards = Array.from(grid.querySelectorAll(".interest-card"));
-  cards.forEach(card => {
-    card.addEventListener("click", () => {
-      card.classList.toggle("is-selected");
-    });
-  });
+  const backButton =
+    document.getElementById(
+      "sleepBack"
+    );
 
-  if (backBtn){
-    backBtn.addEventListener("click", () => window.history.back());
+  const continueButton =
+    document.getElementById(
+      "sleepContinue"
+    );
+
+  const wakeInput =
+    document.getElementById(
+      "wakeTime"
+    );
+
+  const bedInput =
+    document.getElementById(
+      "bedTime"
+    );
+
+
+  if (!continueButton) {
+    return;
   }
 
-  carryUserParam(continueBtn);
 
-  continueBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
+  /* Back */
 
-    const interests = cards
-      .filter(c => c.classList.contains("is-selected"))
-      .map(c => c.querySelector(".interest-card__label").textContent.trim());
+  if (backButton) {
 
-    const draft = getOnboardingDraft();
-    draft.interests = interests;
+    backButton.addEventListener(
+      "click",
+      function () {
 
-    try {
-      await fetch(`${API_BASE}/api/onboarding`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(draft)
+        window.history.back();
+
+      }
+    );
+
+  }
+
+
+  /* Save sleep data */
+
+  continueButton.addEventListener(
+    "click",
+    function () {
+
+      saveOnboardingDraft({
+
+        wakeTime:
+          wakeInput
+            ? wakeInput.value
+            : null,
+
+        bedTime:
+          bedInput
+            ? bedInput.value
+            : null
+
       });
-      sessionStorage.removeItem(ONBOARDING_KEY);
-    } catch (err){
-      // Backend unreachable — still let them into the app rather
-      // than getting stuck; the answers just won't be saved.
-    }
 
-    window.location.href = continueBtn.href;
-  });
+    }
+  );
+
+
+  carryUserParam(
+    continueButton
+  );
+
 }
+
+
+initSleepPage();
+
+
+/* ==========================================================
+   INTERESTS
+========================================================== */
+
+function initInterestsPage() {
+
+  const grid =
+    document.getElementById(
+      "interestsGrid"
+    );
+
+  const backButton =
+    document.getElementById(
+      "interestsBack"
+    );
+
+  const continueButton =
+    document.getElementById(
+      "interestsContinue"
+    );
+
+
+  if (
+    !grid ||
+    !continueButton
+  ) {
+    return;
+  }
+
+
+  const cards =
+    Array.from(
+      grid.querySelectorAll(
+        ".interest-card"
+      )
+    );
+
+
+  /* Select / unselect interests */
+
+  cards.forEach(
+    function (card) {
+
+      card.addEventListener(
+        "click",
+        function () {
+
+          card.classList.toggle(
+            "is-selected"
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+  /* Back */
+
+  if (backButton) {
+
+    backButton.addEventListener(
+      "click",
+      function () {
+
+        window.history.back();
+
+      }
+    );
+
+  }
+
+
+  carryUserParam(
+    continueButton
+  );
+
+
+  /* Final onboarding save */
+
+  continueButton.addEventListener(
+    "click",
+    async function (event) {
+
+      event.preventDefault();
+
+
+      const interests =
+        cards
+          .filter(
+            function (card) {
+
+              return card.classList.contains(
+                "is-selected"
+              );
+
+            }
+          )
+          .map(
+            function (card) {
+
+              const label =
+                card.querySelector(
+                  ".interest-card__label"
+                );
+
+              return label
+                ? label.textContent.trim()
+                : "";
+
+            }
+          )
+          .filter(Boolean);
+
+
+      const draft =
+        getOnboardingDraft();
+
+
+      draft.interests =
+        interests;
+
+
+      try {
+
+        const res =
+          await fetch(
+            `${API_BASE}/api/onboarding`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json"
+              },
+
+              credentials: "include",
+
+              body:
+                JSON.stringify(draft)
+            }
+          );
+
+
+        if (!res.ok) {
+
+          console.warn(
+            "Onboarding save failed:",
+            await res.text()
+          );
+
+        } else {
+
+          /* Successfully saved */
+
+          sessionStorage.removeItem(
+            ONBOARDING_KEY
+          );
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          "Could not save onboarding:",
+          error
+        );
+
+      }
+
+
+      /* Go to app */
+
+      window.location.href =
+        continueButton.href;
+
+    }
+  );
+
+}
+
 
 initInterestsPage();
+
+
+/* ==========================================================
+   PROFILE NAVIGATION
+========================================================== */
+
+async function initProfileNavLink() {
+
+  const profileLink =
+    document.getElementById(
+      "navProfileLink"
+    );
+
+
+  if (!profileLink) {
+    return;
+  }
+
+
+  try {
+
+    const res =
+      await fetch(
+        `${API_BASE}/api/profile`,
+        {
+          method: "GET",
+
+          credentials: "include"
+        }
+      );
+
+
+    if (res.ok) {
+
+      profileLink.hidden = false;
+
+    } else {
+
+      profileLink.hidden = true;
+
+    }
+
+
+  } catch (error) {
+
+    profileLink.hidden = true;
+
+  }
+
+}
+
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function () {
+
+    waitForGoogleAndInit();
+
+    initProfileNavLink();
+
+  }
+);
